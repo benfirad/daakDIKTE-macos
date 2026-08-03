@@ -1,12 +1,16 @@
-"""The clipboard and the key press, which is where a dictation actually lands.
+"""The Linux clipboard and key press, which is where a dictation lands there.
 
 Everything here shells out, so the tools are faked. What the tests hold onto is
 the command line: a paste that presses the wrong keys, or in the wrong order,
 types nothing and looks like a hang.
 
 Both desktops owe the same promises, so those are written once and run against
-each of them. A third one added to paste.py inherits the same list rather than
-needing its own copy of it.
+each of them. A third one added to the Linux adapter inherits the same list
+rather than needing its own copy of it.
+
+None of it touches a real session, so it runs wherever the tests do: the Linux
+clipboard code is the same code on a Windows machine, and a port that breaks it
+should be caught there too.
 """
 
 import os
@@ -15,36 +19,35 @@ import unittest
 from typing import ClassVar
 from unittest import mock
 
-import paste
-from tests.support import DikteTest, FakeCompleted, linux_only, only_these_tools
+import platforms.linux.clipboard as linux_clipboard
+from tests.support import DikteTest, FakeCompleted, only_these_tools
 
 
-@linux_only
 class Chooser(DikteTest):
     """Which pair of programs this session's clipboard goes through."""
 
     def under(self, **env):
         with mock.patch.dict(os.environ, env, clear=True):
-            return paste.desktop()
+            return linux_clipboard.desktop()
 
     def test_a_wayland_session(self):
         self.assertIs(self.under(XDG_SESSION_TYPE="wayland",
-                                 WAYLAND_DISPLAY="wayland-0"), paste.WAYLAND)
+                                 WAYLAND_DISPLAY="wayland-0"), linux_clipboard.WAYLAND)
 
     def test_an_x11_session(self):
-        self.assertIs(self.under(XDG_SESSION_TYPE="x11", DISPLAY=":0"), paste.X11)
+        self.assertIs(self.under(XDG_SESSION_TYPE="x11", DISPLAY=":0"), linux_clipboard.X11)
 
     def test_a_display_with_no_wayland_beside_it(self):
-        self.assertIs(self.under(DISPLAY=":0"), paste.X11)
+        self.assertIs(self.under(DISPLAY=":0"), linux_clipboard.X11)
 
     def test_an_x11_display_under_wayland_is_still_wayland(self):
         """XWayland sets DISPLAY too; the session type is the one to believe."""
         self.assertIs(self.under(XDG_SESSION_TYPE="wayland",
                                  DISPLAY=":0", WAYLAND_DISPLAY="wayland-0"),
-                      paste.WAYLAND)
+                      linux_clipboard.WAYLAND)
 
     def test_nothing_set_at_all(self):
-        self.assertIs(self.under(), paste.WAYLAND)
+        self.assertIs(self.under(), linux_clipboard.WAYLAND)
 
 
 class DesktopContract:
@@ -61,31 +64,31 @@ class DesktopContract:
 
     def test_no_reader_installed(self):
         with only_these_tools():
-            self.assertIsNone(paste.read_clipboard())
+            self.assertIsNone(linux_clipboard.read_clipboard())
 
     def test_what_is_on_the_clipboard_comes_back_as_bytes(self):
         with only_these_tools(self.here.read_command[0]), \
                 mock.patch.object(subprocess, "run",
                                   return_value=FakeCompleted(stdout=b"hello")) as run:
-            self.assertEqual(paste.read_clipboard(), b"hello")
+            self.assertEqual(linux_clipboard.read_clipboard(), b"hello")
         self.assertEqual(run.call_args.args[0], self.here.read_command)
 
     def test_an_empty_clipboard_is_not_an_error(self):
         with only_these_tools(self.here.read_command[0]), \
                 mock.patch.object(subprocess, "run",
                                   return_value=FakeCompleted(returncode=1)):
-            self.assertIsNone(paste.read_clipboard())
+            self.assertIsNone(linux_clipboard.read_clipboard())
 
     def test_a_reader_that_will_not_run(self):
         with only_these_tools(self.here.read_command[0]), \
                 mock.patch.object(subprocess, "run", side_effect=OSError("nope")):
-            self.assertIsNone(paste.read_clipboard())
+            self.assertIsNone(linux_clipboard.read_clipboard())
 
     # ---- copying ----------------------------------------------------------
 
     def test_no_clipboard_tool_installed_says_what_to_install(self):
-        with only_these_tools(), self.assertRaises(paste.PasteError) as caught:
-            paste.copy("hello")
+        with only_these_tools(), self.assertRaises(linux_clipboard.PasteError) as caught:
+            linux_clipboard.copy("hello")
         self.assertIn(self.here.clipboard, str(caught.exception))
         self.assertIn(self.here.packages.split(" and ")[0], str(caught.exception))
 
@@ -93,7 +96,7 @@ class DesktopContract:
         with only_these_tools(self.here.clipboard), \
                 mock.patch.object(subprocess, "run",
                                   return_value=FakeCompleted()) as run:
-            paste.copy("günaydın")
+            linux_clipboard.copy("günaydın")
         self.assertEqual(run.call_args.args[0], self.here.copy_command)
         self.assertEqual(run.call_args.kwargs["input"], "günaydın".encode())
 
@@ -102,7 +105,7 @@ class DesktopContract:
         with only_these_tools(self.here.clipboard), \
                 mock.patch.object(subprocess, "run",
                                   return_value=FakeCompleted()) as run:
-            paste.copy("hello")
+            linux_clipboard.copy("hello")
         self.assertEqual(run.call_args.kwargs["stdout"], subprocess.DEVNULL)
         self.assertEqual(run.call_args.kwargs["stderr"], subprocess.DEVNULL)
 
@@ -110,49 +113,49 @@ class DesktopContract:
         with only_these_tools(self.here.clipboard), \
                 mock.patch.object(subprocess, "run",
                                   return_value=FakeCompleted(returncode=1)), \
-                self.assertRaises(paste.PasteError):
-            paste.copy("hello")
+                self.assertRaises(linux_clipboard.PasteError):
+            linux_clipboard.copy("hello")
 
     def test_a_clipboard_tool_that_will_not_run(self):
         with only_these_tools(self.here.clipboard), \
                 mock.patch.object(subprocess, "run", side_effect=OSError("nope")), \
-                self.assertRaises(paste.PasteError):
-            paste.copy("hello")
+                self.assertRaises(linux_clipboard.PasteError):
+            linux_clipboard.copy("hello")
 
     def test_there_is_nothing_to_restore(self):
         with only_these_tools(self.here.clipboard), \
                 mock.patch.object(subprocess, "run") as run:
-            paste.copy_bytes(None)
+            linux_clipboard.copy_bytes(None)
         run.assert_not_called()
 
     def test_restoring_never_raises(self):
         """It runs after the paste went in; failing here must not undo that."""
         with only_these_tools(self.here.clipboard), \
                 mock.patch.object(subprocess, "run", side_effect=OSError("nope")):
-            paste.copy_bytes(b"whatever was there before")
+            linux_clipboard.copy_bytes(b"whatever was there before")
 
     def test_the_bytes_go_back_untouched(self):
         with only_these_tools(self.here.clipboard), \
                 mock.patch.object(subprocess, "run",
                                   return_value=FakeCompleted()) as run:
-            paste.copy_bytes(b"\x89PNG\r\n")
+            linux_clipboard.copy_bytes(b"\x89PNG\r\n")
         self.assertEqual(run.call_args.kwargs["input"], b"\x89PNG\r\n")
 
     # ---- pressing the key -------------------------------------------------
 
     def press(self, shortcut, result=None):
         with only_these_tools(self.here.keyboard), \
-                mock.patch.object(paste.time, "sleep", lambda seconds: None), \
+                mock.patch.object(linux_clipboard.time, "sleep", lambda seconds: None), \
                 mock.patch.object(subprocess, "run",
                                   return_value=result or FakeCompleted()) as run:
-            paste.press(shortcut)
+            linux_clipboard.press(shortcut)
         return run.call_args.args[0]
 
     def test_no_keyboard_tool_installed(self):
         with only_these_tools():
-            self.assertFalse(paste.paste_ready())
-            with self.assertRaises(paste.PasteError) as caught:
-                paste.press()
+            self.assertFalse(linux_clipboard.paste_ready())
+            with self.assertRaises(linux_clipboard.PasteError) as caught:
+                linux_clipboard.press()
         self.assertIn(self.here.keyboard, str(caught.exception))
 
     def test_case_and_spacing_do_not_matter(self):
@@ -162,30 +165,29 @@ class DesktopContract:
         """Whichever desktop it is, the shortcut is held to one table."""
         with only_these_tools(self.here.keyboard), \
                 mock.patch.object(subprocess, "run") as run, \
-                self.assertRaises(paste.PasteError) as caught:
-            paste.press("ctrl+f13")
+                self.assertRaises(linux_clipboard.PasteError) as caught:
+            linux_clipboard.press("ctrl+f13")
         self.assertIn("f13", str(caught.exception))
         run.assert_not_called()
 
     def test_a_tool_that_will_not_run(self):
         with only_these_tools(self.here.keyboard), \
-                mock.patch.object(paste.time, "sleep", lambda seconds: None), \
+                mock.patch.object(linux_clipboard.time, "sleep", lambda seconds: None), \
                 mock.patch.object(subprocess, "run", side_effect=OSError("nope")), \
-                self.assertRaises(paste.PasteError):
-            paste.press("ctrl+v")
+                self.assertRaises(linux_clipboard.PasteError):
+            linux_clipboard.press("ctrl+v")
 
     def test_a_failed_key_press_names_the_tool_and_what_it_said(self):
-        with self.assertRaises(paste.PasteError) as caught:
+        with self.assertRaises(linux_clipboard.PasteError) as caught:
             self.press("ctrl+v", FakeCompleted(returncode=1, stderr="no socket"))
         self.assertIn(self.here.keyboard, str(caught.exception))
         self.assertIn("no socket", str(caught.exception))
 
 
-@linux_only
 class Wayland(DesktopContract, DikteTest):
     env: ClassVar[dict] = {"XDG_SESSION_TYPE": "wayland",
                            "WAYLAND_DISPLAY": "wayland-0"}
-    here = paste.WAYLAND
+    here = linux_clipboard.WAYLAND
 
     def test_ydotool_presses_down_then_lets_go_in_reverse(self):
         self.assertEqual(self.press("ctrl+v"),
@@ -203,15 +205,14 @@ class Wayland(DesktopContract, DikteTest):
 
     def test_a_failure_asks_after_the_daemon(self):
         """ydotool needs ydotoold, and says nothing useful when it is not up."""
-        with self.assertRaises(paste.PasteError) as caught:
+        with self.assertRaises(linux_clipboard.PasteError) as caught:
             self.press("ctrl+v", FakeCompleted(returncode=1, stderr="no socket"))
         self.assertIn("ydotoold", str(caught.exception))
 
 
-@linux_only
 class X11(DesktopContract, DikteTest):
     env: ClassVar[dict] = {"XDG_SESSION_TYPE": "x11", "DISPLAY": ":0"}
-    here = paste.X11
+    here = linux_clipboard.X11
 
     def test_xdotool_takes_the_combination_as_one_argument(self):
         self.assertEqual(self.press("ctrl+v"),
@@ -227,7 +228,7 @@ class X11(DesktopContract, DikteTest):
         self.assertEqual(self.press("meta+enter")[-1], "super+Return")
 
     def test_no_daemon_to_ask_after(self):
-        with self.assertRaises(paste.PasteError) as caught:
+        with self.assertRaises(linux_clipboard.PasteError) as caught:
             self.press("ctrl+v", FakeCompleted(returncode=1, stderr="bad keysym"))
         self.assertNotIn("ydotoold", str(caught.exception))
 

@@ -17,6 +17,12 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 _SANDBOX = tempfile.mkdtemp(prefix="dikte-tests-")
 os.environ["XDG_CONFIG_HOME"] = os.path.join(_SANDBOX, "config")
 os.environ["XDG_DATA_HOME"] = os.path.join(_SANDBOX, "data")
+os.environ["XDG_CACHE_HOME"] = os.path.join(_SANDBOX, "cache")
+# The same redirection for the roots Windows resolves its directories from, so
+# a test that forgets writes into the sandbox there too rather than into the
+# real %APPDATA%\Dikte.
+os.environ["APPDATA"] = os.path.join(_SANDBOX, "config")
+os.environ["LOCALAPPDATA"] = os.path.join(_SANDBOX, "data")
 atexit.register(shutil.rmtree, _SANDBOX, True)
 
 # A key sitting in the environment would otherwise reach the code that falls
