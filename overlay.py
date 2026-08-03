@@ -6,6 +6,8 @@ from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF
 from PyQt6.QtGui import QColor, QCursor, QFont, QPainter, QPainterPath, QPen, QFontMetrics
 from PyQt6.QtWidgets import QWidget, QApplication
 
+from platforms import IS_WINDOWS
+
 BARS = 22
 HEIGHT = 56
 MIN_WIDTH = 210
@@ -54,13 +56,19 @@ class Overlay(QWidget):
         self._phase = 0.0
         self._concealed = True
 
-        self.setWindowFlags(
+        flags = (
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
             | Qt.WindowType.WindowDoesNotAcceptFocus
-            | Qt.WindowType.X11BypassWindowManagerHint
         )
+        # Going around the window manager is how an X11 session lets a window
+        # sit in a screen corner and stay out of the taskbar. Windows already
+        # does both for a tool window that never activates, and the hint there
+        # is a request to a window manager that is not listening.
+        if not IS_WINDOWS:
+            flags |= Qt.WindowType.X11BypassWindowManagerHint
+        self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         # One that can be clicked away has to receive the click, which means it

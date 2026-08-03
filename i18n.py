@@ -167,8 +167,11 @@ TR = {
     "Skip silent recordings (don't call the API)":
         "Sessiz kayıtları atla (API'ye gönderme)",
     "Silence threshold": "Sessizlik eşiği",
-    "Keep audio files (~/.local/share/dikte/recordings)":
-        "Ses kayıtlarını sakla (~/.local/share/dikte/recordings)",
+    "Keep audio files ({path})": "Ses kayıtlarını sakla ({path})",
+    "Folders": "Klasörler",
+    "Folder": "Klasör",
+    "Open the settings folder": "Ayar klasörünü aç",
+    "Open the data folder": "Veri klasörünü aç",
 
     # --- settings: api --------------------------------------------------
     "Keys": "Anahtarlar",
@@ -284,7 +287,7 @@ TR = {
     "Saved: {path}": "Kaydedildi: {path}",
 
     # --- settings: shortcut ------------------------------------------------
-    "Install as a KDE shortcut": "KDE kısayolu olarak kur",
+    "Install as a {desktop} shortcut": "{desktop} kısayolu olarak kur",
     "Install as a global shortcut": "Global kısayol olarak kur",
     "Remove": "Kaldır",
     "Registered in KDE: {shortcut}": "KDE'de kayıtlı: {shortcut}",
@@ -298,6 +301,26 @@ TR = {
     "No global shortcut installed. The tray menu discards it too.":
         "Global kısayol kurulu değil. Kayıt tepsi menüsünden de iptal edilebilir.",
     "Start and stop": "Başlat ve bitir",
+    "Capture shortcut": "Kısayolu yakala",
+    "Press shortcut… (Esc cancels)": "Kısayola bas… (Esc iptal eder)",
+    "Click here, then press the shortcut you want. Dikte temporarily "
+    "releases its own shortcuts while listening, so you can capture "
+    "the shortcut that is already active too.":
+        "Buraya tıkla, sonra istediğin kısayola bas. Dikte dinlerken kendi "
+        "kısayollarını geçici olarak bırakır; böylece hâlihazırda etkin olan "
+        "kısayolu da yakalayabilirsin.",
+    "Shortcut capture timed out. Try again.":
+        "Kısayol yakalama süresi doldu. Yeniden dene.",
+    "That key is not supported. Use a letter, number, function key, Space or "
+    "a navigation key, optionally with Ctrl, Alt, Shift or Meta.":
+        "Bu tuş desteklenmiyor. Ctrl, Alt, Shift veya Meta ile birlikte ya da "
+        "tek başına bir harf, rakam, işlev tuşu, Boşluk veya yön tuşu kullan.",
+    "The shortcut {shortcut} is already assigned to {verb}. Each shortcut can "
+    "only perform one action.":
+        "{shortcut} kısayolu zaten {verb} için atanmış. Her kısayol yalnızca "
+        "bir işlem yapabilir.",
+    "Selected {shortcut}. Press Save to start using it.":
+        "{shortcut} seçildi. Kullanmaya başlamak için Kaydet'e bas.",
     "Throws the recording away without transcribing it. Works on a dictation "
     "and on a command for the agent alike, whichever is running.":
         "Kaydı yazıya dökmeden atar. Hangisi çalışıyorsa ona işler: dikteye de, "
@@ -333,6 +356,84 @@ TR = {
     "  sudo usermod -aG input $USER   (then log out and back in)":
         "/dev/input okunamıyor. Kullanıcının 'input' grubunda olması gerekir:\n"
         "  sudo usermod -aG input $USER   (sonra oturumu yeniden aç)",
+
+    # --- windows: the shortcuts ---------------------------------------------
+    "The shortcuts are held for as long as Dikte is running, and given back "
+    "when it quits. Windows hands a combination to one program at a time: one "
+    "that is already taken is refused, without saying by whom, and the key no "
+    "longer reaches the window underneath.":
+        "Kısayollar Dikte çalıştığı sürece tutulur, kapanınca geri verilir. "
+        "Windows bir kombinasyonu aynı anda tek programa verir: başkasının "
+        "aldığı bir kombinasyon reddedilir, kimin aldığı söylenmez, ve tuş "
+        "artık alttaki pencereye ulaşmaz.",
+    "{shortcut} is already taken by another application.":
+        "{shortcut} kombinasyonunu başka bir uygulama tutuyor.",
+    "{shortcut} is already taken by another application. Windows only gives a "
+    "combination to one program at a time; pick another one.":
+        "{shortcut} kombinasyonunu başka bir uygulama tutuyor. Windows bir "
+        "kombinasyonu aynı anda tek programa verir; başka bir tane seç.",
+    "Windows refused the shortcut {shortcut} (error {code}).":
+        "Windows {shortcut} kısayolunu kabul etmedi (hata {code}).",
+    "another application (Windows does not say which)":
+        "başka bir uygulama (Windows hangisi olduğunu söylemiyor)",
+
+    # --- windows: sound -----------------------------------------------------
+    "The Windows sound support is missing. Reinstall Dikte, or run: "
+    "pip install PyAudioWPatch":
+        "Windows ses desteği eksik. Dikte'yi yeniden kur ya da şunu çalıştır: "
+        "pip install PyAudioWPatch",
+    "Whatever {device} is playing": "{device} ne çalıyorsa",
+    "Windows would not open {device}. Check Settings → Privacy & security → "
+    "Microphone: desktop apps need microphone access turned on. ({error})":
+        "Windows {device} aygıtını açmadı. Ayarlar → Gizlilik ve güvenlik → "
+        "Mikrofon bölümünü aç: masaüstü uygulamalarının mikrofon erişimi açık "
+        "olmalı. ({error})",
+    "Could not start recording on {device}: {error}":
+        "{device} üzerinde kayıt başlatılamadı: {error}",
+    "No microphone found. Plug one in, or pick another under Settings → General.":
+        "Mikrofon bulunamadı. Bir mikrofon tak ya da Ayarlar → Genel altından "
+        "başka birini seç.",
+    "The microphone {device} is not there any more. Pick another one under "
+    "Settings → General.":
+        "{device} mikrofonu artık yok. Ayarlar → Genel altından başka birini seç.",
+    "The microphone stopped before any sound arrived: {error}":
+        "Mikrofon, hiç ses gelmeden durdu: {error}",
+    "the device went away": "aygıt ortadan kayboldu",
+
+    # --- windows: the clipboard ---------------------------------------------
+    "Could not open the Windows clipboard: another program is holding it. "
+    "Try again in a moment.":
+        "Windows panosu açılamadı: başka bir program panoyu tutuyor. "
+        "Birazdan tekrar dene.",
+    "Windows would not let Dikte type into that window, because it is running "
+    "as administrator and Dikte is not. The text is on the clipboard: press "
+    "{shortcut} yourself.":
+        "Windows, Dikte'nin o pencereye yazmasına izin vermedi: pencere "
+        "yönetici olarak çalışıyor, Dikte çalışmıyor. Metin panoda, "
+        "{shortcut} tuşlarına kendin bas.",
+    "Could not send the key press: Windows error {code}.":
+        "Tuş gönderilemedi: Windows hatası {code}.",
+
+    # --- local models: which build ------------------------------------------
+    # "Runs on" is further down, where the agent tab already uses it.
+    "Auto": "Otomatik",
+    "CPU": "İşlemci",
+    "NVIDIA (CUDA)": "NVIDIA (CUDA)",
+    "Vulkan": "Vulkan",
+    "Automatic downloads the build that runs on any machine, on the "
+    "processor. Pick a graphics card build to fetch that one instead; if it "
+    "fails to start, the reason is shown rather than swallowed.":
+        "Otomatik, her makinede işlemci üzerinde çalışan sürümü indirir. Ekran "
+        "kartı sürümü seçersen o indirilir; başlatılamazsa nedeni gizlenmeden "
+        "gösterilir.",
+    "Downloaded, version {version} ({backend}).":
+        "İndirildi, sürüm {version} ({backend}).",
+    "{repo} {tag} publishes no {backend} build for this machine.":
+        "{repo} {tag} bu makine için {backend} sürümü yayımlamıyor.",
+    "{archive} tried to write outside its own directory ({member}). "
+    "Nothing was installed.":
+        "{archive} kendi klasörünün dışına yazmaya çalıştı ({member}). "
+        "Hiçbir şey kurulmadı.",
 
     # --- settings: history --------------------------------------------------
     "Copy selected to clipboard": "Seçiliyi panoya kopyala",

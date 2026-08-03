@@ -16,7 +16,7 @@ import cleanup
 import config as cfg
 import ggml
 import i18n
-from tests.support import DikteTest
+from tests.support import DikteTest, linux_only, windows_only
 
 
 class Loading(DikteTest):
@@ -88,10 +88,82 @@ class Saving(DikteTest):
         cfg.Config().save()
         self.assertTrue(cfg.CONFIG_FILE.exists())
 
+    @linux_only
     def test_the_file_is_readable_by_nobody_else(self):
-        """It holds two API keys."""
+        """It holds two API keys, and on Linux the mode is what keeps them."""
         cfg.Config().save()
         self.assertEqual(cfg.CONFIG_FILE.stat().st_mode & 0o777, 0o600)
+
+
+class Secrets(DikteTest):
+    """API keys through whatever this platform keeps a secret in.
+
+    A mode on the file is the whole protection on Linux and none of it on
+    Windows, where `os.chmod` can only move the read-only attribute. The
+    contract above the platform is the same either way: what goes into a
+    setting is what comes back out of it.
+    """
+
+    def test_a_key_survives_the_round_trip(self):
+        conf = cfg.Config()
+        conf["openai_api_key"] = "sk-secret-key"
+        conf.save()
+        self.assertEqual(cfg.Config()["openai_api_key"], "sk-secret-key")
+
+    def test_every_key_setting_goes_through_the_same_door(self):
+        conf = cfg.Config()
+        for key in cfg.SECRET_KEYS:
+            conf[key] = f"value-for-{key}"
+        conf.save()
+        reloaded = cfg.Config()
+        for key in cfg.SECRET_KEYS:
+            with self.subTest(key=key):
+                self.assertEqual(reloaded[key], f"value-for-{key}")
+
+    def test_an_empty_key_stays_empty_rather_than_becoming_ciphertext(self):
+        cfg.Config().save()
+        for key in cfg.SECRET_KEYS:
+            with self.subTest(key=key):
+                self.assertEqual(self.read_config_file()[key], "")
+
+    def test_a_key_written_in_plain_text_by_an_older_version_is_still_read(self):
+        self.write_config({"openai_api_key": "sk-written-by-hand"})
+        self.assertEqual(cfg.Config()["openai_api_key"], "sk-written-by-hand")
+
+    def test_and_is_rewritten_the_way_this_platform_keeps_one(self):
+        """Nobody has to migrate anything: the next save is the migration."""
+        self.write_config({"openai_api_key": "sk-written-by-hand"})
+        cfg.Config().save()
+        stored = self.read_config_file()["openai_api_key"]
+        self.assertTrue(stored.startswith(cfg.runtime.SECRET_PREFIX)
+                        if hasattr(cfg.runtime, "SECRET_PREFIX")
+                        else stored == "sk-written-by-hand")
+        self.assertEqual(cfg.Config()["openai_api_key"], "sk-written-by-hand")
+
+    @windows_only
+    def test_on_windows_the_key_is_not_on_disk_in_plain_text(self):
+        """The file's permissions are not the protection here, so the key is
+        encrypted to this Windows account before it is written."""
+        conf = cfg.Config()
+        conf["openai_api_key"] = "sk-secret-key"
+        conf.save()
+        text = cfg.CONFIG_FILE.read_text(encoding="utf-8")
+        self.assertNotIn("sk-secret-key", text)
+        self.assertIn("dpapi:", self.read_config_file()["openai_api_key"])
+
+    @windows_only
+    def test_a_key_from_another_machine_reads_as_missing_rather_than_wrong(self):
+        """Restored from a backup, the ciphertext cannot be decrypted here. An
+        empty key sends the user to the one place that can fix it."""
+        self.write_config({"openai_api_key": "dpapi:1:bm90IG1pbmUgYXQgYWxs"})
+        self.assertEqual(cfg.Config()["openai_api_key"], "")
+
+    @linux_only
+    def test_on_linux_the_key_is_stored_as_it_was_typed(self):
+        conf = cfg.Config()
+        conf["openai_api_key"] = "sk-secret-key"
+        conf.save()
+        self.assertEqual(self.read_config_file()["openai_api_key"], "sk-secret-key")
 
     def test_nothing_is_left_behind_half_written(self):
         cfg.Config().save()
