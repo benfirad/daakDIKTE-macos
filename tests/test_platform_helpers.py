@@ -9,11 +9,13 @@ from unittest import mock
 
 import assistant
 import autostart
+import config
 import dikte
 import hotkey
 import i18n
 import local_whisper
 import paste
+import settings_ui
 import updater
 
 
@@ -30,6 +32,18 @@ class MacShortcutParserTests(unittest.TestCase):
 
     def test_rejects_unknown_key(self):
         self.assertEqual(hotkey._parse_macos_shortcut("Cmd+Nope"), (None, None))
+
+
+class GlobalDefaultsTests(unittest.TestCase):
+    def test_fresh_install_auto_detects_spoken_language(self):
+        self.assertEqual(config.DEFAULTS["language"], "auto")
+
+    def test_common_whisper_languages_can_be_selected(self):
+        codes = {code for _, code in settings_ui.LANGUAGES}
+        self.assertTrue({
+            "tr", "en", "de", "fr", "es", "ar", "it", "pt", "nl",
+            "pl", "ru", "uk", "zh", "ja", "ko", "hi", "id",
+        }.issubset(codes))
 
 
 class TrayMenuPolicyTests(unittest.TestCase):

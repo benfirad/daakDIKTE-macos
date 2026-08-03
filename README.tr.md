@@ -1,15 +1,19 @@
-# daakDİKTE
+# daakDİKTE — macOS ve Linux için gizlilik odaklı sesle yazma
 
 <p align="center">
   <img src="docs/hero.svg" width="100%" alt="daakDİKTE — macOS ve Linux için yerel sesle yazma">
 </p>
 
 <p align="center">
-  <a href="https://github.com/benfirad/daakDIKTE-macos/releases/latest"><img alt="Son sürüm" src="https://img.shields.io/github/v/release/benfirad/daakDIKTE-macos?style=flat-square&color=47d7ff"></a>
+  <a href="https://github.com/benfirad/daakDIKTE-macos/releases"><img alt="Son sürüm" src="https://img.shields.io/github/v/release/benfirad/daakDIKTE-macos?include_prereleases&sort=semver&style=flat-square&color=47d7ff"></a>
   <img alt="macOS ve Linux" src="https://img.shields.io/badge/platform-macOS_%2B_Linux-7c5cff?style=flat-square">
   <img alt="Yerel Whisper" src="https://img.shields.io/badge/transkripsiyon-yerel_Whisper-5ff0b1?style=flat-square&logoColor=000000">
   <img alt="Codex CLI" src="https://img.shields.io/badge/temizleme-Codex_CLI-47d7ff?style=flat-square">
 </p>
+
+**Açık kaynak ve çevrimdışı öncelikli dikte.** Global kısayola bas, doğal
+biçimde konuş; yerel Whisper metni açık olan uygulamaya yazsın. Özel yerel
+kullanım için abonelik ya da API anahtarı gerekmez.
 
 **daakDİKTE, [Yusuf İpek'in açık kaynak Dikte
 projesinin](https://github.com/yusufipk/dikte) macOS uyarlamasıdır.** Orijinal
@@ -20,7 +24,9 @@ değiştirilmiş macOS sürümünü ayırır. Linux derlemesi özgün **Dikte** 
 whisper.cpp ile veya OpenAI/OpenRouter üzerinden yazıya çevrilir; sonuç panoya
 kopyalanır ve o an yazdığın pencereye yapıştırılır.
 
-KDE Plasma 6 / Wayland ve macOS 13 veya üstünde çalışır. macOS portu ses için
+KDE Plasma 6 / Wayland ve macOS 13 veya üstünde çalışır. Yeni kurulumlarda
+konuşma dili otomatik algılanır; istenirse 17 yaygın dil doğrudan seçilebilir.
+macOS portu ses için
 AVFoundation, genel kısayol için yerleşik Carbon API'si ve sistem panosunu
 kullanır.
 
@@ -222,6 +228,15 @@ i18n.py           metin tablosu
 Linux'ta gösterge XWayland üzerinden çizilir; Wayland'da bir pencereyi belirli
 bir köşeye yerleştirmenin yolu yok, `dikte.py` bu yüzden
 `QT_QPA_PLATFORM=xcb` ayarlar. macOS yerleşik yüzen araç penceresini kullanır.
+
+## Topluluk ve sürdürülebilirlik
+
+- Planlanan işler için [yol haritasına](ROADMAP.md) bak.
+- Kod katkısı göndermek için [katkı rehberini](CONTRIBUTING.md) kullan.
+- Güvenlik sorunlarını [SECURITY.md](SECURITY.md) üzerinden özel olarak bildir.
+- Sponsorluğun destekleyeceği işler [SPONSORS.md](SPONSORS.md) içinde açıkça
+  yazılıdır. GitHub Sponsor düğmesi, bakımcı hesabının kimlik ve ödeme
+  doğrulaması tamamlanınca etkinleşecektir.
 
 ## Lisans
 
