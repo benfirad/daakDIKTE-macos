@@ -3,14 +3,14 @@
 ## Running the tests
 
 ```sh
-python -m unittest discover          # all of them, about a second
+python -m unittest discover          # all of them
 python -m unittest tests.test_api    # one file
 python -m unittest tests.test_api.Transcribe.test_no_key_at_all
 ```
 
-Nothing to install: the tests use the standard library's `unittest`, and the
-only dependency is the PyQt6 the application already needs. They reach neither
-the network, the microphone, nor your real `~/.config/dikte`, so they are safe
+The tests use the standard library's `unittest`, PyQt6, and on Windows the
+PyAudioWPatch the application already needs. They reach neither the network,
+the microphone, nor your real settings and data directories, so they are safe
 to run anywhere and they run on a machine with no display.
 
 CI runs the same command on Python 3.11 through 3.13. A pull request that turns
@@ -52,30 +52,39 @@ forgets fails rather than hangs.
 
 ## Another platform
 
-Most of what Dikte does is not desktop-specific, and the tests are split along
-that line. 511 of them pass anywhere: transcription, cleanup, the config file,
-the history, the agent, the command line, the timeline of a meeting. The
-remaining 59 cover what Dikte *is* on this desktop, and carry `@linux_only`
-from `tests.support`: PipeWire capture and the pactl device list, wl-clipboard
-and ydotool, KDE's shortcut file and the `/dev/input` listener.
+Most of what Dikte does is not desktop-specific, and both the code and the tests
+are split along that line.
 
-Mark a test `@linux_only` when it would fail on a machine that never had those
-programs. Do not mark one because it happens to be convenient: a test that
-quietly stops running on the platform you are porting to protects nothing.
+Everything a desktop can refuse lives under `platforms/`, one directory per
+operating system, four modules each:
 
-The other half of a port is where the branch goes. Keep `sys.platform` out of
-the middle of a function; make the public name a chooser and give each platform
-its own function underneath:
-
-```python
-def copy(text):
-    return _copy_macos(text) if sys.platform == "darwin" else _copy_wayland(text)
+```
+platforms/
+  common/     what neither of them decides: PCM arithmetic, the shortcut list
+  linux/      audio.py  clipboard.py  hotkeys.py  runtime.py
+  windows/    audio.py  clipboard.py  hotkeys.py  runtime.py
 ```
 
-Then each platform's test calls its own function directly and passes everywhere,
-and adding a third one leaves the first two's tests alone. An `if` buried inside
-`copy()` forces every existing test to patch `sys.platform` instead, and the
-next port breaks all of them.
+`audio.py`, `paste.py`, `hotkey.py` and `config.py` at the top level are the
+contract. They pick an adapter at import through `platforms.adapter(...)` and
+re-export its functions under the names the rest of Dikte has always called
+them by, so `worker.py`, `meeting.py` and `dikte.py` never learn which desktop
+they are on. A third system is a third directory, not a branch inside every
+function: keep `sys.platform` out of the middle of anything, and put a name in
+`runtime.py` when what differs is smaller than a whole module.
+
+The tests follow the same split. Most of them pass anywhere: transcription,
+cleanup, the config file, the history, the agent, the command line, the
+timeline of a meeting. The rest cover what Dikte *is* on one desktop and carry
+`@linux_only` or `@windows_only` from `tests.support`.
+
+A platform's own test imports that platform's adapter directly rather than the
+contract module, which is why `tests/test_paste.py` exercises the Linux
+clipboard on a Windows machine too: it is the same code there, and a port that
+breaks it should be caught wherever the tests are run. Only what genuinely
+needs the operating system underneath gets a marker. Do not mark a test because
+it happens to be convenient: one that quietly stops running on the platform you
+are porting to protects nothing.
 
 ## What a pull request should carry
 

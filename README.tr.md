@@ -4,8 +4,9 @@
 çevrilir, bir model transkripti temizler (ıı'lar, tekrarlar, eksik noktalama),
 sonuç panoya kopyalanır ve o an yazdığın pencereye yapıştırılır.
 
-KDE Plasma 6 / Wayland için yazıldı. Sistem paketleri dışında bağımlılığı yok:
-sadece Python standart kütüphanesi ve PyQt6.
+Linux'ta ve Windows'ta çalışır. Linux tarafı KDE Plasma 6 / Wayland için
+yazıldı ve sistem paketleri dışında bağımlılığı yok: sadece Python standart
+kütüphanesi ve PyQt6. Windows tarafı bir kurulum dosyası; hiçbir şey gerekmiyor.
 
 *[English README](README.md)*
 
@@ -20,6 +21,8 @@ sadece Python standart kütüphanesi ve PyQt6.
 | <img src="docs/settings-audio-file.webp" width="410" alt="Ses dosyası"> | <img src="docs/settings-shortcuts.webp" width="410" alt="Kısayollar"> |
 
 ## Kurulum
+
+### Linux
 
 ```sh
 sudo pacman -S --needed pipewire-audio wl-clipboard ydotool ffmpeg python-pyqt6
@@ -42,14 +45,44 @@ son sürümü çeker ve bunları senin seçtiğin tuşlarla yerine koyar;
 `./uninstall.sh` hepsini geri alır, `--purge` demedikçe ayarlarına ve
 diktelerine dokunmaz.
 
+### Windows
+
+Kurulum dosyasını çalıştır. Python kurmana, PyQt kurmana, PATH'e komut satırı
+aracı eklemene gerek yok: paket hepsini, ffmpeg dahil, kendi içinde taşıyor.
+
+Yalnız senin hesabına, `%LOCALAPPDATA%` altına kurulur ve hiçbir zaman yönetici
+izni istemez. Bu bir düzen tercihi değil: Windows, yönetici olarak çalışan bir
+programın olmayan bir programa tuş göndermesine izin vermez, dolayısıyla
+yönetici olarak kurulup çalıştırılan bir Dikte sıradan pencerelere
+yapıştıramazdı. Oturum açılışında başlamayı teklif eder, ki başlaması gerekir:
+global kısayol yalnızca Dikte çalışırken vardır.
+
+Kaldırma programı siler; ayarların, geçmişin, toplantıların ve indirdiğin
+modeller sorulmadan silinmez, sorulduğunda da varsayılan cevap "hayır"dır.
+
+Kurulum dosyasını kendin üretmek için: [packaging/windows](packaging/windows).
+
+Burada üç şey farklı çalışır, üçü de Windows öyle olduğu için:
+
+- **Kısayol tuşu alttaki pencereye geçmez.** `Ctrl+Space` Dikte'ye gelir ve
+  orada kalır; Linux'taki yedek dinleyici ise tuşu alttaki uygulamaya da
+  iletir. Windows bir kombinasyonu aynı anda tek programa verir ve reddettiğinde
+  kimin aldığını söylemez.
+- **Yönetici olarak çalışan bir pencereye yapıştırılamaz.** Metin panoda kalır
+  ve gösterge bunu söyler; tuşa kendin basarsın.
+- **API anahtarların Windows hesabına şifrelenir**, kısıtlı izinli bir dosyada
+  tutulmaz; çünkü NTFS'te öyle bir izin yok. Başka makineye kopyalanan bir
+  `config.json` hiçbir şey vermez.
+
 Sesi yazıya çevirme ve temizleme, ayarlar penceresinde ayrı ayrı sağlayıcı
 seçer; ikisi de varsayılan olarak burada, kendi modellerinle çalışır. Bulutu
 seçersen sesi yazıya çevirme **OpenAI**, **Groq** ya da **OpenRouter**'da
 (varsayılan `gpt-4o-transcribe`), temizleme OpenRouter'da
 (`google/gemini-3.5-flash-lite`) ya da kuruluysa Claude Code veya Codex'te
 çalışır. Anahtarları boş bırakırsan `OPENAI_API_KEY`, `GROQ_API_KEY` ve
-`OPENROUTER_API_KEY` kullanılır; anahtarlar `~/.config/dikte/config.json`
-içinde, izinler 600. Temizlemeyi tamamen kapatabilirsin, o zaman ham transkript
+`OPENROUTER_API_KEY` kullanılır; anahtarlar Linux'ta `~/.config/dikte/config.json`
+içinde izinleri 600 ile, Windows'ta `%APPDATA%\Dikte\config.json` içinde
+hesabına şifrelenmiş olarak durur. Temizlemeyi tamamen kapatabilirsin, o zaman ham transkript
 yapıştırılır; modelin yanındaki kutudan düşünme seviyesini de seçebilirsin.
 
 ## Kullanım
@@ -63,6 +96,11 @@ yapıştırılır; modelin yanındaki kutudan düşünme seviyesini de seçebili
 | Ayarlar | Tepsi menüsü → *Ayarlar*, ya da `dikte settings` |
 | Güncelleme sonrası yeniden yükle | Tepsi menüsü → *Yeniden başlat*, ya da `dikte restart` |
 | Çık | Tepsi menüsü → *Çık*, ya da `dikte quit` |
+
+Kısayolları hazır bir listeden seçmen gerekmez. Ayarlar → Kısayollar altında
+istediğin işlemin yanındaki **Kısayolu yakala** düğmesine bas, ardından kullanmak
+istediğin kombinasyona bas. Dikte dinlerken etkin kısayollarını geçici olarak
+bırakır ve bastığın kombinasyonu otomatik seçer; **Kaydet** onu etkinleştirir.
 
 Ekranın köşesindeki gösterge kırmızı kayıt noktasını, canlı ses dalgasını ve
 süreyi, ardından hangi aşamada olduğunu gösterir. Odak almaz. Dikte çalışırken
@@ -135,7 +173,7 @@ olmasını ister.
   silebilirsin.
 - **Türkçe ve İngilizce arayüz**, varsayılan olarak sistem dilini izler.
 
-## Global kısayollar için bir kez oturum kapatmak gerekir
+## Linux'ta global kısayollar için bir kez oturum kapatmak gerekir
 
 KWin `kglobalshortcutsrc` dosyasını yalnızca açılışta okur, yani `install.sh`'ın
 yazdığı kısayollar oturumu yeniden açana kadar tetiklenmez. O zamana kadar Ayarlar →
@@ -150,7 +188,7 @@ grubunda olmasını gerektirir: `sudo usermod -aG input $USER`.
 dikte.py          giriş noktası, tepsi simgesi, durum makinesi
 cli.py            komut satırı: bütün fiiller ve verdikleri cevap
 ipc.py            yerel sokette bir istek, bir cevap
-audio.py          PCM kaydı: diktede pw-record, toplantıda ffmpeg
+audio.py          mikrofonu ve hoparlörden çıkanı kaydetme
 meeting.py        kanal ayırma, konuşmacı etiketi, temizleme, tutanak
 assistant.py      dikteyi Claude Code, Codex ya da OpenRouter'dan geçirme
 api.py            transkript ve temizleme istekleri (yalnız stdlib)
@@ -162,13 +200,30 @@ vad.py            kayıtta gerçekten konuşma var mı kararı
 filetranscribe.py dosyadan transkript: ffmpeg, parçalama, zaman damgaları
 overlay.py        köşedeki gösterge
 settings_ui.py    ayarlar penceresi
-hotkey.py         KDE kısayol kurulumu ve evdev dinleyici
-paste.py          wl-clipboard ve ydotool sarmalayıcıları
+icons.py          tepsi simgeleri; simge teması olmayan yerde çizilir
+hotkey.py         dört global kısayol ve onları kimin ilettiği
+keycapture.py     Ayarlar'da kısayolu doğrudan klavyeden okuma
+paste.py          pano ve içindekini pencereye döken tuş basışı
 i18n.py           metin tablosu
+
+platforms/        masaüstünün reddedebileceği her şey, sistem başına bir kez
+  common/         ikisinin de karar vermediği kısımlar: PCM, kısayol listesi
+  linux/          PipeWire/PulseAudio, wl-clipboard/X11, KDE/GNOME, XDG
+  windows/        WASAPI, Win32 pano ve SendInput, RegisterHotKey, DPAPI
+
+packaging/windows/ paketlenmiş sürüm ve kurulum dosyası
 ```
 
-Gösterge XWayland üzerinden çizilir; Wayland'da bir pencereyi belirli bir köşeye
-yerleştirmenin yolu yok, `dikte.py` bu yüzden `QT_QPA_PLATFORM=xcb` ayarlar.
+`audio.py`, `paste.py`, `hotkey.py` ve `config.py` sözleşmedir: içeri
+alındıklarında bir adaptör seçer ve onun fonksiyonlarını hep taşıdıkları
+adlarla sunar; böylece `worker.py`, `meeting.py` ve `dikte.py` hangi masaüstünde
+olduklarını hiç öğrenmez. Her adaptör aynı dört parçayı sunar — ses yakalama,
+panoyu tutma, kısayolu elde tutma ve dosyaların nerede durduğu — ve üçüncü bir
+sistem, her fonksiyonun içine bir dal değil, üçüncü bir klasör olurdu.
+
+Linux'ta gösterge XWayland üzerinden çizilir; Wayland'da bir pencereyi belirli
+bir köşeye yerleştirmenin yolu yok, `dikte.py` bu yüzden `QT_QPA_PLATFORM=xcb`
+ayarlar. Windows istemeden yerleştirir.
 
 ## Lisans
 

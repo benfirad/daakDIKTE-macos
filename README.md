@@ -5,8 +5,9 @@ machine by default, a model cleans it up (dropping the *uh*s, the restarts, the
 missing punctuation), and the result lands in your clipboard and is pasted into
 whatever window you were typing in.
 
-Built for KDE Plasma 6 on Wayland. No dependencies beyond system packages:
-just the Python standard library and PyQt6.
+Runs on Linux and on Windows. On Linux it was built for KDE Plasma 6 on
+Wayland, and needs nothing beyond system packages: the Python standard library
+and PyQt6. On Windows it is an installer, and needs nothing at all.
 
 *[Türkçe README](README.tr.md)*
 
@@ -21,6 +22,8 @@ just the Python standard library and PyQt6.
 | <img src="docs/settings-audio-file.webp" width="410" alt="Audio file"> | <img src="docs/settings-shortcuts.webp" width="410" alt="Shortcuts"> |
 
 ## Install
+
+### Linux
 
 ```sh
 sudo pacman -S --needed pipewire-audio wl-clipboard ydotool ffmpeg python-pyqt6
@@ -41,6 +44,35 @@ sudo apt install pulseaudio-utils xclip xdotool ffmpeg
 two global shortcuts, whose keys are its two arguments. `./update.sh` pulls and
 puts all of that back, keeping the keys you chose; `./uninstall.sh` takes it away
 again and leaves your settings and dictations alone unless you pass `--purge`.
+
+### Windows
+
+Run the installer. There is no Python to install, no PyQt to install and no
+command-line tools to put on a PATH: the package carries all of it, including
+ffmpeg.
+
+It installs for your account alone, into `%LOCALAPPDATA%`, and never asks for
+administrator. That is not tidiness — Windows refuses to let a program running
+as administrator type into one that is not, so an elevated Dikte could not
+paste into anything ordinary. It offers to start with you at sign-in, which it
+should: a global shortcut only exists while Dikte is running.
+
+Uninstalling removes the program and leaves your settings, history, meetings and
+downloaded models where they are, unless you say otherwise when asked.
+
+To build the installer yourself, see [packaging/windows](packaging/windows).
+
+Three things work differently here, all of them because Windows does:
+
+- **The shortcut swallows the key.** `Ctrl+Space` reaches Dikte and stops
+  there, where the Linux fallback listener passes it on to the window
+  underneath. Windows also gives a combination to one program at a time, and
+  will not say which one has it when it refuses yours.
+- **A window running as administrator cannot be pasted into.** The text is on
+  the clipboard and the indicator says so; press the key yourself.
+- **Your API keys are encrypted** to your Windows account rather than kept in a
+  file with a restrictive mode, because NTFS has no such mode to set. A
+  `config.json` copied to another machine hands over nothing.
 
 Speech to text and cleanup each pick a provider in the settings window, and both
 run here by default, on models of your own. The cloud is the other option:
@@ -64,6 +96,11 @@ to it.
 | Reload after an update | Tray menu → *Restart*, or `dikte restart` |
 | Quit | Tray menu → *Quit*, or `dikte quit` |
 
+Shortcuts do not have to be chosen from a preset list. Under Settings →
+Shortcuts, click **Capture shortcut** beside an action and press the combination
+you want. Dikte temporarily releases its active shortcuts while listening, then
+selects what you pressed; **Save** makes it active.
+
 An indicator in the screen corner shows a red dot, a live waveform and the
 elapsed time, then the stage it is on. It never takes focus. Pressing
 `Ctrl+Space` again while Dikte is still working does nothing; nothing queues up.
@@ -83,9 +120,11 @@ running.
 - **It all runs on this machine by default.** Speech to text on whisper.cpp and
   cleanup on llama.cpp, neither installed beforehand: the settings window fetches
   the program and the model, verifies the sha256 and refuses a download published
-  without one, then keeps a server alive while you dictate. The graphics card is
-  reached through CUDA, ROCm or Vulkan where the build allows. No key, no
-  account, nothing leaving the machine.
+  without one, then keeps a server alive while you dictate. The build it fetches
+  runs on the processor, which runs anywhere; a graphics card is something you
+  pick, once, under *Runs on*, and a card the project publishes no build for is
+  said so rather than quietly swapped for the processor one. No key, no account,
+  nothing leaving the machine.
 - **Silence never reaches the API.** Handed near-silence, a transcription model
   invents a sentence instead of returning nothing ("Thanks for watching", or in
   Turkish "Altyazı M.K."). A recording is dropped when nothing rose 10 dB above
@@ -137,7 +176,7 @@ running.
   right-click to delete.
 - **Turkish and English interface**, following the system locale by default.
 
-## The global shortcuts need one logout
+## On Linux, the global shortcuts need one logout
 
 KWin only reads `kglobalshortcutsrc` at startup, so the shortcuts `install.sh`
 writes will not fire until you log out and back in. Until then, Settings →
@@ -152,7 +191,7 @@ needs your user in the `input` group: `sudo usermod -aG input $USER`.
 dikte.py          entry point, tray icon, state machine
 cli.py            the command line: every verb, and what it answers with
 ipc.py            one request and one reply over the local socket
-audio.py          PCM capture: pw-record for dictation, ffmpeg for a meeting
+audio.py          capturing the microphone and what the speakers are playing
 meeting.py        channel split, speaker labelling, cleanup, minutes
 assistant.py      running a dictation through Claude Code, Codex or OpenRouter
 api.py            transcription and cleanup requests (stdlib only)
@@ -164,13 +203,30 @@ vad.py            deciding whether a recording holds speech at all
 filetranscribe.py file transcription: ffmpeg, chunking, timestamps
 overlay.py        the corner indicator
 settings_ui.py    settings window
-hotkey.py         KDE shortcut installation and the evdev listener
-paste.py          wl-clipboard and ydotool wrappers
+icons.py          the three tray icons, drawn where no theme offers them
+hotkey.py         the four global shortcuts, and who delivers them
+keycapture.py     reads a shortcut directly from the keyboard in Settings
+paste.py          the clipboard, and the key press that empties it into a window
 i18n.py           the string table
+
+platforms/        everything a desktop can refuse, written once per system
+  common/           the parts neither of them decides: PCM, the shortcut list
+  linux/            PipeWire/PulseAudio, wl-clipboard/X11, KDE/GNOME, XDG
+  windows/          WASAPI, Win32 clipboard and SendInput, RegisterHotKey, DPAPI
+
+packaging/windows/ the frozen build and the installer
 ```
 
-The indicator is drawn through XWayland, because a Wayland client cannot place a
-window in a screen corner; `dikte.py` sets `QT_QPA_PLATFORM=xcb` for that.
+`audio.py`, `paste.py`, `hotkey.py` and `config.py` are the contract: they pick
+an adapter at import and hand its functions on under the names they have always
+had, so `worker.py`, `meeting.py` and `dikte.py` never learn which desktop they
+are on. Each adapter offers the same four parts — capturing sound, owning the
+clipboard, holding a shortcut, and where things live — and a third system would
+be a third directory rather than a branch inside every function.
+
+On Linux the indicator is drawn through XWayland, because a Wayland client
+cannot place a window in a screen corner; `dikte.py` sets `QT_QPA_PLATFORM=xcb`
+for that. Windows places it without being asked.
 
 ## License
 
