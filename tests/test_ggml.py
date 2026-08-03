@@ -186,6 +186,7 @@ class InstallProgram(Local):
     def setUp(self):
         super().setUp()
         self.patch_attr(ggml, "IS_WINDOWS", False)
+        self.patch_attr(ggml, "IS_MACOS", False)
         self.patch_attr(ggml, "EXE", "")
         # Built once, because the release listing has to publish its checksum
         # and a tarball is not the same bytes twice.
@@ -226,6 +227,22 @@ class InstallProgram(Local):
             with self.assertRaises(ggml.LocalError) as caught:
                 ggml.install_program(ggml.WHISPER)
         self.assertIn("this machine", str(caught.exception))
+
+    def test_a_mac_does_not_install_an_ubuntu_whisper_archive(self):
+        self.patch_attr(ggml, "IS_MACOS", True)
+        self.patch_attr(ggml, "_arch", lambda: "arm64")
+        with fake_urlopen(self.release("whisper-bin-ubuntu-arm64.tar.gz")):
+            with self.assertRaises(ggml.LocalError) as caught:
+                ggml.install_program(ggml.WHISPER)
+        self.assertIn("brew install whisper-cpp", str(caught.exception))
+
+    def test_a_mac_uses_the_native_llama_archive(self):
+        self.patch_attr(ggml, "IS_MACOS", True)
+        self.patch_attr(ggml, "_arch", lambda: "arm64")
+        self.assertEqual(
+            ggml._wanted_assets(ggml.LLAMA),
+            (r"bin-macos-arm64\.tar\.gz$",),
+        )
 
     def test_what_was_installed_is_remembered(self):
         path, _ = self.install("whisper-bin-ubuntu-x64.tar.gz")
@@ -825,4 +842,3 @@ class Sizes(DikteTest):
         self.assertEqual(ggml.human_size(512), "512 B")
         self.assertEqual(ggml.human_size(574041195), "547.4 MB")
         self.assertEqual(ggml.human_size(3_095_033_483), "2.9 GB")
-

@@ -15,6 +15,8 @@ import time
 
 from i18n import t
 
+SHORTCUTS = ["ctrl+v", "ctrl+shift+v", "shift+insert"]
+
 # Linux input event codes (linux/input-event-codes.h), which is what ydotool
 # takes. They are also the list of keys a paste shortcut may be built from, so
 # xdotool is held to the same table rather than being handed the text as typed.

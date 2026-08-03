@@ -22,6 +22,8 @@ from ctypes import wintypes
 
 from i18n import t
 
+SHORTCUTS = ["ctrl+v", "ctrl+shift+v", "shift+insert"]
+
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 

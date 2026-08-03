@@ -17,7 +17,7 @@ import api
 import ggml
 import i18n
 from i18n import t
-from platforms import adapter
+from platforms import IS_MACOS, adapter
 
 runtime = adapter("runtime")
 
@@ -429,7 +429,7 @@ DEFAULTS = {
     "local_llm_reasoning": "none",
     "cleanup_prompt": "",           # empty -> language-specific default
     "auto_paste": True,
-    "paste_shortcut": "ctrl+v",
+    "paste_shortcut": "cmd+v" if IS_MACOS else "ctrl+v",
     "restore_clipboard": False,
     "mic_target": "",
     "max_seconds": 300,
@@ -438,11 +438,11 @@ DEFAULTS = {
     "speech_margin_db": 10.0,     # how far speech must rise above the noise floor
     "min_voiced_seconds": 0.3,
     "filter_hallucinations": True,
-    "shortcut": "Ctrl+Space",
+    "shortcut": "Ctrl+Option+Space" if IS_MACOS else "Ctrl+Space",
     # Ctrl+Alt+Space rather than Escape: the combination the recording started
     # with, one modifier along. Escape belongs to whatever window has focus, and
     # while you are dictating something else usually has it.
-    "cancel_shortcut": "Ctrl+Alt+Space",
+    "cancel_shortcut": "Ctrl+Option+R" if IS_MACOS else "Ctrl+Alt+Space",
     "evdev_hotkey": False,
     "overlay_corner": "bottom-left",
     "keep_audio": False,

@@ -20,6 +20,12 @@ import time
 if os.environ.get("XDG_SESSION_TYPE") == "wayland" and os.environ.get("DISPLAY"):
     os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
+if sys.platform == "darwin":
+    os.environ["PATH"] = os.pathsep.join(
+        part for part in ("/opt/homebrew/bin", "/usr/local/bin",
+                          os.environ.get("PATH", "")) if part
+    )
+
 from PyQt6.QtCore import QTimer, QElapsedTimer, QSocketNotifier  # noqa: E402
 from PyQt6.QtGui import QAction, QIcon  # noqa: E402
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket  # noqa: E402
@@ -34,6 +40,7 @@ import hotkey  # noqa: E402
 import i18n  # noqa: E402
 import icons  # noqa: E402
 import ipc  # noqa: E402
+import macos  # noqa: E402
 import meeting  # noqa: E402
 from i18n import t  # noqa: E402
 from meeting import MeetingPipeline  # noqa: E402
@@ -205,9 +212,13 @@ class Dikte:
         self.tray.setToolTip(t("Dikte: ready"))
         self.tray.activated.connect(self._tray_clicked)
         self._set_icon("audio-input-microphone")
+        for indicator in (self.overlay, self.ask_overlay):
+            indicator.prepare()
 
     def _tray_clicked(self, reason):
         if reason != QSystemTrayIcon.ActivationReason.Trigger:
+            return
+        if sys.platform == "darwin":
             return
         # The icon ends whatever is being recorded rather than only a dictation.
         # The two shortcuts are each tied to their own mode, on purpose, but the
@@ -515,6 +526,7 @@ class Dikte:
     def start(self):
         if self.state != IDLE or self.recording:
             return
+        macos.remember_the_front()
         self.overlay.show_recording()
         self._begin_recording(DICTATION)
         self._set_state(RECORDING)
@@ -522,6 +534,7 @@ class Dikte:
     def start_ask(self):
         if self.ask_state != IDLE or self.recording:
             return
+        macos.remember_the_front()
         self.ask_overlay.show_recording(asking=True)
         self._begin_recording(ASK)
         self._set_ask_state(RECORDING)
@@ -829,6 +842,7 @@ class Dikte:
         self.settings_window.show()
         self.settings_window.raise_()
         self.settings_window.activateWindow()
+        macos.come_to_the_front()
 
     def _settings_closed(self, *_):
         # Don't drop the object while its own signal is still being delivered.
@@ -1029,6 +1043,7 @@ def run_app(args):
     command = args[0] if args else ""
 
     app = QApplication(sys.argv)
+    macos.live_in_the_menu_bar()
     app.setApplicationName("Dikte")
     app.setDesktopFileName("dikte")
     app.setQuitOnLastWindowClosed(False)
