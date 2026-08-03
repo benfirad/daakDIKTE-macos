@@ -37,6 +37,10 @@ MENUBAR_ICONS = [
 LANGUAGES = [
     ("Detect automatically", "auto"), ("Turkish", "tr"), ("English", "en"),
     ("German", "de"), ("French", "fr"), ("Spanish", "es"), ("Arabic", "ar"),
+    ("Italian", "it"), ("Portuguese", "pt"), ("Dutch", "nl"),
+    ("Polish", "pl"), ("Russian", "ru"), ("Ukrainian", "uk"),
+    ("Chinese", "zh"), ("Japanese", "ja"), ("Korean", "ko"),
+    ("Hindi", "hi"), ("Indonesian", "id"),
 ]
 CORNERS = ["bottom-left", "bottom-right", "top-left", "top-right"]
 TRANSCRIBE_PROVIDERS = [

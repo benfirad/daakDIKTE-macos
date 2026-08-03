@@ -1,0 +1,45 @@
+name: Feature request
+description: Propose a focused improvement with a testable outcome.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Describe the problem before describing a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed experience
+      description: What should the user be able to do?
+    validations:
+      required: true
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Platforms
+      multiple: true
+      options:
+        - macOS
+        - Linux Wayland
+        - Linux X11
+        - Windows
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy and permissions impact
+      description: Does this send audio/text over the network or require a new OS permission?
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      description: List observable conditions that would make the feature complete.
+    validations:
+      required: true

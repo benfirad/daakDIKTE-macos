@@ -383,7 +383,9 @@ DEFAULTS = {
     "transcribe_model": "gpt-4o-transcribe",           # used when provider is openai
     "openrouter_transcribe_model": "openai/gpt-4o-transcribe",
     "local_whisper_model": str(LOCAL_WHISPER_MODEL),
-    "language": "tr",
+    # Auto-detect by default so a fresh install works globally. Existing users
+    # keep the explicit language already stored in their config.
+    "language": "auto",
     "transcribe_prompt": "",
     "cleanup_enabled": True,
     "cleanup_provider": "openrouter",  # openrouter | codex

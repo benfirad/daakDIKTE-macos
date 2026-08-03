@@ -9,11 +9,13 @@ from unittest import mock
 
 import assistant
 import autostart
+import config
 import dikte
 import hotkey
 import i18n
 import local_whisper
 import paste
+import settings_ui
 import updater
 
 
@@ -30,6 +32,18 @@ class MacShortcutParserTests(unittest.TestCase):
 
     def test_rejects_unknown_key(self):
         self.assertEqual(hotkey._parse_macos_shortcut("Cmd+Nope"), (None, None))
+
+
+class GlobalDefaultsTests(unittest.TestCase):
+    def test_fresh_install_auto_detects_spoken_language(self):
+        self.assertEqual(config.DEFAULTS["language"], "auto")
+
+    def test_common_whisper_languages_can_be_selected(self):
+        codes = {code for _, code in settings_ui.LANGUAGES}
+        self.assertTrue({
+            "tr", "en", "de", "fr", "es", "ar", "it", "pt", "nl",
+            "pl", "ru", "uk", "zh", "ja", "ko", "hi", "id",
+        }.issubset(codes))
 
 
 class TrayMenuPolicyTests(unittest.TestCase):
@@ -269,13 +283,28 @@ class MacUpdaterTests(unittest.TestCase):
 
 
 class MacAudioDeviceParserTests(unittest.TestCase):
-    @unittest.skipUnless(sys.platform == "darwin", "macOS-only AVFoundation test")
     def test_audio_devices_are_listed_as_index_name_pairs(self):
         import audio
 
-        devices = audio._mac_audio_devices()
-        self.assertTrue(devices)
-        self.assertTrue(all(index.isdigit() and name for index, name in devices))
+        ffmpeg_output = """
+[AVFoundation indev @ 0x123] AVFoundation video devices:
+[AVFoundation indev @ 0x123] [0] FaceTime HD Camera
+[AVFoundation indev @ 0x123] AVFoundation audio devices:
+[AVFoundation indev @ 0x123] [0] MacBook Microphone
+[AVFoundation indev @ 0x123] [1] BlackHole 2ch
+"""
+        with mock.patch.object(audio.shutil, "which", return_value="/opt/ffmpeg"), \
+                mock.patch.object(
+                    audio.subprocess,
+                    "run",
+                    return_value=mock.Mock(stderr=ffmpeg_output),
+                ):
+            devices = audio._mac_audio_devices()
+
+        self.assertEqual(
+            devices,
+            [("0", "MacBook Microphone"), ("1", "BlackHole 2ch")],
+        )
 
 
 class LocalWhisperTests(unittest.TestCase):

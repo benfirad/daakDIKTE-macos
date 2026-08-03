@@ -1,0 +1,73 @@
+name: Bug report
+description: Report a reproducible problem without sharing private audio or text.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Remove recordings, transcripts, API keys and personal data before submitting.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS Apple Silicon
+        - macOS Intel
+        - Linux Wayland
+        - Linux X11
+        - Windows development build
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: daakDİKTE version
+      placeholder: "For example: 0.3.12"
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Transcription provider
+      options:
+        - Local Whisper
+        - OpenAI
+        - OpenRouter
+        - Not related to transcription
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Tell us the smallest sequence that reproduces the problem.
+      placeholder: |
+        1. Open…
+        2. Press…
+        3. See…
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and safe logs
+      description: Paste only logs you have checked for secrets and private text.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed recordings, transcripts, API keys and personal data.
+          required: true
+        - label: I searched existing issues and pull requests.
+          required: true

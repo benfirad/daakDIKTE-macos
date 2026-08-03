@@ -1,15 +1,20 @@
-# daakDİKTE
+# daakDİKTE — private voice typing for macOS and Linux
 
 <p align="center">
   <img src="docs/hero.svg" width="100%" alt="daakDİKTE — native voice-to-text for macOS and Linux">
 </p>
 
 <p align="center">
-  <a href="https://github.com/benfirad/daakDIKTE-macos/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/benfirad/daakDIKTE-macos?style=flat-square&color=47d7ff"></a>
+  <a href="https://github.com/benfirad/daakDIKTE-macos/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/benfirad/daakDIKTE-macos?include_prereleases&sort=semver&style=flat-square&color=47d7ff"></a>
   <img alt="macOS and Linux" src="https://img.shields.io/badge/platform-macOS_%2B_Linux-7c5cff?style=flat-square">
   <img alt="Local Whisper" src="https://img.shields.io/badge/transcription-local_Whisper-5ff0b1?style=flat-square&logoColor=000000">
   <img alt="Codex CLI" src="https://img.shields.io/badge/cleanup-Codex_CLI-47d7ff?style=flat-square">
+  <a href="LICENSE"><img alt="GPL-3.0 license" src="https://img.shields.io/github/license/benfirad/daakDIKTE-macos?style=flat-square&color=aeb8cb"></a>
 </p>
+
+**Open-source, offline-first dictation that types into any app.** Use a global
+shortcut, speak naturally, and let local Whisper turn your voice into text. No
+subscription or API key is required for the private local workflow.
 
 **daakDİKTE is the macOS adaptation of [Yusuf İpek's open-source Dikte
 project](https://github.com/yusufipk/dikte).** It keeps the original author,
@@ -20,7 +25,9 @@ Press `Ctrl+Space`, talk, press again. The recording is transcribed either
 locally with whisper.cpp (no API key) or through OpenAI/OpenRouter, then lands
 in your clipboard and is pasted into whatever window you were typing in.
 
-Runs on KDE Plasma 6 / Wayland and macOS 13 or newer. The macOS port uses
+Runs on KDE Plasma 6 / Wayland and macOS 13 or newer. New installations detect
+the spoken language automatically, with explicit presets for 17 widely used
+languages. The macOS port uses
 AVFoundation for audio, native Carbon global hotkeys, and the system clipboard.
 
 *[Türkçe README](README.tr.md)*
@@ -33,6 +40,28 @@ AVFoundation for audio, native Carbon global hotkeys, and the system clipboard.
 |---|---|
 | <img src="docs/settings-api.webp" width="410" alt="API and models"> | <img src="docs/settings-cleanup.webp" width="410" alt="Cleanup rules"> |
 | <img src="docs/settings-audio-file.webp" width="410" alt="Audio file"> | <img src="docs/settings-history.webp" width="410" alt="History"> |
+
+## Why daakDİKTE?
+
+| Need | What daakDİKTE provides |
+| --- | --- |
+| Private voice typing | Local whisper.cpp transcription; recordings and transcripts stay on your computer |
+| Works everywhere | Types into editors, browsers, terminals, chat apps and forms through one global shortcut |
+| Better than raw transcripts | Optional cleanup rules, personal vocabulary and proper-name hints |
+| No separate AI bill | Local Whisper plus your signed-in Codex CLI session can run without API keys |
+| Longer audio | File transcription, subtitles, meeting capture and structured minutes |
+| Open and inspectable | GPL-3.0 source, documented architecture and contribution workflow |
+
+## Quick start
+
+**macOS:** download the newest `Dikte-macOS.zip` from
+[Releases](https://github.com/benfirad/daakDIKTE-macos/releases), unzip it and
+move the app to `/Applications`. Install the audio runtime once with
+`brew install ffmpeg`. Because beta builds are not notarized yet, use
+**Control-click → Open** on the first launch.
+
+**Linux:** install the dependencies shown below, clone the repository and run
+`./install.sh`.
 
 ## Install on Linux
 
@@ -111,6 +140,18 @@ OpenRouter key can cover both hosted steps. Keys fall back to `OPENAI_API_KEY`
 and `OPENROUTER_API_KEY`, and are
 stored in `~/.config/dikte/config.json` on Linux or
 `~/Library/Application Support/Dikte/config.json` on macOS, mode 600.
+
+### Privacy at a glance
+
+| Configuration | Audio leaves the computer? | Transcript leaves the computer? |
+| --- | --- | --- |
+| Local Whisper + cleanup off | No | No |
+| Local Whisper + Codex CLI cleanup | No | Yes, cleanup text is sent through your signed-in Codex session |
+| OpenAI/OpenRouter transcription | Yes | Yes |
+
+daakDİKTE has no analytics or advertising SDK. Update checks contact GitHub;
+the local model installer downloads its selected whisper.cpp model from
+Hugging Face. Hosted providers are only used when you select them.
 
 ## Using it
 
@@ -222,6 +263,17 @@ i18n.py           the string table
 On Linux the indicator is drawn through XWayland, because a Wayland client
 cannot place a window in a screen corner; `dikte.py` sets
 `QT_QPA_PLATFORM=xcb` for that. macOS uses its native floating tool window.
+
+## Community and sustainability
+
+- Read the [roadmap](ROADMAP.md) to see what is ready, what is next and where
+  contributions have the most impact.
+- Use the [contribution guide](CONTRIBUTING.md) for development setup, tests and
+  pull requests.
+- Report security problems privately by following [SECURITY.md](SECURITY.md).
+- See [SPONSORS.md](SPONSORS.md) for the funding principles and the work that
+  sponsorship will support. The GitHub Sponsors button will activate after the
+  maintainer account completes GitHub's identity and payout review.
 
 ## License
 
