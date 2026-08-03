@@ -283,13 +283,28 @@ class MacUpdaterTests(unittest.TestCase):
 
 
 class MacAudioDeviceParserTests(unittest.TestCase):
-    @unittest.skipUnless(sys.platform == "darwin", "macOS-only AVFoundation test")
     def test_audio_devices_are_listed_as_index_name_pairs(self):
         import audio
 
-        devices = audio._mac_audio_devices()
-        self.assertTrue(devices)
-        self.assertTrue(all(index.isdigit() and name for index, name in devices))
+        ffmpeg_output = """
+[AVFoundation indev @ 0x123] AVFoundation video devices:
+[AVFoundation indev @ 0x123] [0] FaceTime HD Camera
+[AVFoundation indev @ 0x123] AVFoundation audio devices:
+[AVFoundation indev @ 0x123] [0] MacBook Microphone
+[AVFoundation indev @ 0x123] [1] BlackHole 2ch
+"""
+        with mock.patch.object(audio.shutil, "which", return_value="/opt/ffmpeg"), \
+                mock.patch.object(
+                    audio.subprocess,
+                    "run",
+                    return_value=mock.Mock(stderr=ffmpeg_output),
+                ):
+            devices = audio._mac_audio_devices()
+
+        self.assertEqual(
+            devices,
+            [("0", "MacBook Microphone"), ("1", "BlackHole 2ch")],
+        )
 
 
 class LocalWhisperTests(unittest.TestCase):
