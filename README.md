@@ -5,9 +5,9 @@ machine by default, a model cleans it up (dropping the *uh*s, the restarts, the
 missing punctuation), and the result lands in your clipboard and is pasted into
 whatever window you were typing in.
 
-Runs on Linux and on Windows. On Linux it was built for KDE Plasma 6 on
-Wayland, and needs nothing beyond system packages: the Python standard library
-and PyQt6. On Windows it is an installer, and needs nothing at all.
+Runs natively on Linux, macOS and Windows. Linux uses PipeWire/PulseAudio,
+macOS uses CoreAudio, NSPasteboard and Carbon, and Windows uses WASAPI and the
+Win32 APIs; the dictation, cleanup, meeting and agent pipeline is shared.
 
 *[Türkçe README](README.tr.md)*
 
@@ -79,6 +79,31 @@ sudo apt install pulseaudio-utils xclip xdotool ffmpeg
 two global shortcuts, whose keys are its two arguments. `./update.sh` pulls and
 puts all of that back, keeping the keys you chose; `./uninstall.sh` takes it away
 again and leaves your settings and dictations alone unless you pass `--purge`.
+
+### macOS
+
+Install the native recorder, local speech server and Python runtime with
+Homebrew, then run the same installer:
+
+```sh
+brew install ffmpeg whisper-cpp python@3.13
+python3.13 -m pip install PyQt6
+./install.sh
+```
+
+The installer creates `~/Applications/Dikte.app`, a `dikte` command and a
+LaunchAgent so Dikte lives in the menu bar and starts at login. The default
+shortcut is `Ctrl+Option+Space`, because `Ctrl+Space` is commonly reserved for
+switching input sources. On the first paste, allow Dikte under **System
+Settings → Privacy & Security → Accessibility**. Microphone permission is asked
+by macOS when recording starts.
+
+The microphone list stores stable AVFoundation device names rather than moving
+indexes. Meeting capture also needs a loopback device such as BlackHole,
+Loopback or Soundflower to record the far side. Plain dictation does not.
+whisper.cpp comes from Homebrew because its releases do not contain a runnable
+macOS server archive; Dikte can download native Metal-enabled llama.cpp builds
+itself.
 
 ### Windows
 

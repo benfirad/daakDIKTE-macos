@@ -605,6 +605,16 @@ class SettingsWindow(QDialog):
         self.auto_paste = QCheckBox(t("Paste the text into the focused window"))
         form.addRow("", self.auto_paste)
 
+        self.type_out = QCheckBox(t("Type it out instead, leaving the clipboard alone"))
+        self.type_out.setToolTip(t(
+            "The characters are sent as if typed, so whatever you had copied "
+            "stays copied and no paste key has to work in that window. Slower "
+            "on a long transcript."
+        ))
+        form.addRow("", self.type_out)
+        self.type_out.toggled.connect(self._typing_changed)
+        self.auto_paste.toggled.connect(self._typing_changed)
+
         self.paste_shortcut = QComboBox()
         self.paste_shortcut.addItems(PASTE_SHORTCUTS)
         # Keep a hand-written or older-platform value visible and round-trippable.
@@ -613,10 +623,12 @@ class SettingsWindow(QDialog):
         self.paste_shortcut.setToolTip(
             t("Terminals usually want ctrl+shift+v. Change this if pasting does nothing.")
         )
+        self.paste_key_row = self.paste_shortcut
         form.addRow(t("Paste key"), self.paste_shortcut)
 
         self.restore_clipboard = QCheckBox(t("Restore the previous clipboard after pasting"))
         form.addRow("", self.restore_clipboard)
+        self.general_form = form
 
         self.corner = QComboBox()
         for value in CORNERS:
@@ -1505,6 +1517,8 @@ class SettingsWindow(QDialog):
         self._select_data(self.mic, conf["mic_target"])
         self._select_data(self.language, conf["language"])
         self.auto_paste.setChecked(conf["auto_paste"])
+        self.type_out.setChecked(conf["type_instead_of_pasting"])
+        self._typing_changed()
         self.paste_shortcut.setCurrentText(conf["paste_shortcut"])
         self.restore_clipboard.setChecked(conf["restore_clipboard"])
         self._select_data(self.corner, conf["overlay_corner"])
@@ -1600,6 +1614,7 @@ class SettingsWindow(QDialog):
         conf["mic_target"] = self.mic.currentData() or ""
         conf["language"] = self.language.currentData() or "auto"
         conf["auto_paste"] = self.auto_paste.isChecked()
+        conf["type_instead_of_pasting"] = self.type_out.isChecked()
         conf["paste_shortcut"] = self.paste_shortcut.currentText().strip()
         conf["restore_clipboard"] = self.restore_clipboard.isChecked()
         conf["overlay_corner"] = self.corner.currentData() or "bottom-left"
@@ -1939,6 +1954,13 @@ class SettingsWindow(QDialog):
             self.file_status.setText(t("Saved: {path}", path=path))
         except OSError as exc:
             self.file_status.setText(t("Failed: {error}", error=exc))
+
+    def _typing_changed(self, *_):
+        """Hide clipboard-only controls when text is delivered as keystrokes."""
+        pasting = self.auto_paste.isChecked() and not self.type_out.isChecked()
+        self.type_out.setEnabled(self.auto_paste.isChecked())
+        self.general_form.setRowVisible(self.paste_key_row, pasting)
+        self.restore_clipboard.setEnabled(pasting)
 
     # ---- shortcuts -------------------------------------------------------
 

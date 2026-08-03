@@ -429,6 +429,7 @@ DEFAULTS = {
     "local_llm_reasoning": "none",
     "cleanup_prompt": "",           # empty -> language-specific default
     "auto_paste": True,
+    "type_instead_of_pasting": False,
     "paste_shortcut": "cmd+v" if IS_MACOS else "ctrl+v",
     "restore_clipboard": False,
     "mic_target": "",

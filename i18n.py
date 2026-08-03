@@ -68,6 +68,8 @@ TR = {
     "Transcribing…": "Yazıya çevriliyor…",
     "Cleaning up…": "Temizleniyor…",
     "Pasting…": "Yapıştırılıyor…",
+    "Typing…": "Yazılıyor…",
+    "Typed": "Yazıldı",
     "Pasted": "Yapıştırıldı",
     "Copied": "Panoya kopyalandı",
     "{action}: {preview}": "{action}: {preview}",
@@ -115,6 +117,7 @@ TR = {
     "Unknown key: {key}": "Bilinmeyen tuş: {key}",
     "Could not run {tool}: {error}": "{tool} çalıştırılamadı: {error}",
     "{tool} failed: {error}": "{tool} hatası: {error}",
+    "Could not type the transcript.": "Metin yazılamadı.",
     "Is ydotoold running? (systemctl --user status ydotool)":
         "ydotoold çalışıyor mu? (systemctl --user status ydotool)",
 
@@ -152,6 +155,14 @@ TR = {
     "Spanish": "İspanyolca",
     "Arabic": "Arapça",
     "Paste the text into the focused window": "Metni odaktaki pencereye yapıştır",
+    "Type it out instead, leaving the clipboard alone":
+        "Bunun yerine metni yaz, panoya dokunma",
+    "The characters are sent as if typed, so whatever you had copied stays "
+    "copied and no paste key has to work in that window. Slower on a long "
+    "transcript.":
+        "Karakterler yazılmış gibi gönderilir; kopyaladığın şey panoda kalır ve "
+        "o pencerede yapıştırma tuşunun çalışması gerekmez. Uzun metinde daha "
+        "yavaştır.",
     "Paste key": "Yapıştırma tuşu",
     "Terminals usually want ctrl+shift+v. Change this if pasting does nothing.":
         "Terminaller genelde ctrl+shift+v ister. Yapıştırma çalışmıyorsa bunu değiştir.",

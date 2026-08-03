@@ -27,4 +27,4 @@ copy_bytes = _impl.copy_bytes
 paste_ready = _impl.paste_ready
 press = _impl.press
 SHORTCUTS = _impl.SHORTCUTS
-type_out = getattr(_impl, "type_out", None)
+type_out = _impl.type_out

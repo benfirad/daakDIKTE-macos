@@ -30,7 +30,7 @@ CONTRACT = {
     "audio": ("Recorder", "MeetingRecorder",
               "list_sources", "list_monitors", "default_monitor"),
     "clipboard": ("PasteError", "read_clipboard", "copy", "copy_bytes",
-                  "paste_ready", "press"),
+                  "paste_ready", "press", "type_out"),
     "hotkeys": ("Listener", "parse_shortcut", "install_shortcut",
                 "remove_shortcut", "shortcut_status", "conflicting_shortcuts",
                 "desktop_name"),

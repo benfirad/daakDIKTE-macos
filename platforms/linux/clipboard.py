@@ -152,6 +152,27 @@ def paste_ready():
     return shutil.which(desktop().keyboard) is not None
 
 
+def type_out(text, delay=0.12):
+    """Type Unicode text without replacing what is on the clipboard."""
+    here = desktop()
+    if not paste_ready():
+        raise PasteError(t("{tool} not found, cannot paste automatically.",
+                           tool=here.keyboard))
+    command = (["ydotool", "type", "--key-delay", "0", "--", str(text)]
+               if here is WAYLAND else
+               ["xdotool", "type", "--clearmodifiers", "--", str(text)])
+    time.sleep(delay)
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+    except (subprocess.SubprocessError, OSError) as exc:
+        raise PasteError(t("Could not run {tool}: {error}",
+                           tool=here.keyboard, error=exc)) from exc
+    if result.returncode != 0:
+        message = t("{tool} failed: {error}", tool=here.keyboard,
+                    error=result.stderr.strip() or "unknown error")
+        raise PasteError(f"{message}\n{t(here.key_hint)}" if here.key_hint else message)
+
+
 def press(shortcut="ctrl+v", delay=0.12):
     """Press a key combination, e.g. 'ctrl+v'."""
     here = desktop()

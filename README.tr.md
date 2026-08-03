@@ -4,9 +4,9 @@
 çevrilir, bir model transkripti temizler (ıı'lar, tekrarlar, eksik noktalama),
 sonuç panoya kopyalanır ve o an yazdığın pencereye yapıştırılır.
 
-Linux'ta ve Windows'ta çalışır. Linux tarafı KDE Plasma 6 / Wayland için
-yazıldı ve sistem paketleri dışında bağımlılığı yok: sadece Python standart
-kütüphanesi ve PyQt6. Windows tarafı bir kurulum dosyası; hiçbir şey gerekmiyor.
+Linux, macOS ve Windows üzerinde yerel olarak çalışır. Linux PipeWire/PulseAudio,
+macOS CoreAudio, NSPasteboard ve Carbon, Windows ise WASAPI ve Win32 API'lerini
+kullanır; dikte, temizleme, toplantı ve ajan hattı üçünde ortaktır.
 
 *[English README](README.md)*
 
@@ -77,6 +77,31 @@ başlatmayı ve iki global kısayolu kurar; tuşları da iki argümanı. `./upda
 son sürümü çeker ve bunları senin seçtiğin tuşlarla yerine koyar;
 `./uninstall.sh` hepsini geri alır, `--purge` demedikçe ayarlarına ve
 diktelerine dokunmaz.
+
+### macOS
+
+Yerel kayıt aracını, konuşma sunucusunu ve Python çalışma ortamını Homebrew ile
+kurup aynı yükleyiciyi çalıştır:
+
+```sh
+brew install ffmpeg whisper-cpp python@3.13
+python3.13 -m pip install PyQt6
+./install.sh
+```
+
+Yükleyici `~/Applications/Dikte.app`, `dikte` komutu ve oturum açılışında
+çalışan bir LaunchAgent oluşturur; Dikte menü çubuğunda yaşar. Varsayılan
+kısayol `Ctrl+Option+Space`'tir, çünkü `Ctrl+Space` çoğu Mac'te giriş kaynağını
+değiştirir. İlk yapıştırmada **Sistem Ayarları → Gizlilik ve Güvenlik →
+Erişilebilirlik** altında Dikte'ye izin ver. Mikrofon iznini ilk kayıt sırasında
+macOS ister.
+
+Mikrofon listesi değişken aygıt numaraları yerine kararlı AVFoundation adlarını
+kaydeder. Toplantıda karşı tarafın sesini almak için BlackHole, Loopback veya
+Soundflower gibi bir loopback aygıtı gerekir; normal dikte için gerekmez.
+whisper.cpp, yayınlarında çalıştırılabilir macOS sunucusu bulunmadığı için
+Homebrew'dan gelir; Dikte Metal destekli yerel llama.cpp yapısını kendi
+indirebilir.
 
 ### Windows
 
