@@ -29,6 +29,7 @@ CHANGED = {
     "ui_language": "tr",
     "language": "tr",
     "auto_paste": False,
+    "type_instead_of_pasting": True,
     "paste_shortcut": "ctrl+shift+v",
     "restore_clipboard": True,
     "overlay_corner": "top-right",

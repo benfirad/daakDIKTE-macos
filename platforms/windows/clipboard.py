@@ -22,6 +22,8 @@ from ctypes import wintypes
 
 from i18n import t
 
+SHORTCUTS = ["ctrl+v", "ctrl+shift+v", "shift+insert"]
+
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
@@ -102,6 +104,7 @@ EXTENDED = {0x2D, 0x5B}
 
 KEYEVENTF_EXTENDEDKEY = 0x0001
 KEYEVENTF_KEYUP = 0x0002
+KEYEVENTF_UNICODE = 0x0004
 INPUT_KEYBOARD = 1
 MAPVK_VK_TO_VSC = 0
 
@@ -360,3 +363,41 @@ def press(shortcut="ctrl+v", delay=0.12):
         ))
     raise PasteError(t("Could not send the key press: Windows error {code}.",
                        code=error or "unknown"))
+
+
+def type_out(text, delay=0.12):
+    """Send Unicode keyboard packets without touching the clipboard."""
+    time.sleep(delay)
+    events = unicode_events(text)
+    if not events:
+        return
+    array = (_Input * len(events))(*events)
+    ctypes.set_last_error(0)
+    sent = user32.SendInput(len(events), ctypes.byref(array), ctypes.sizeof(_Input))
+    if sent == len(events):
+        return
+    error = ctypes.get_last_error()
+    if error == ERROR_ACCESS_DENIED:
+        raise PasteError(t(
+            "Windows would not let Dikte type into that window, because it is "
+            "running as administrator and Dikte is not."
+        ))
+    raise PasteError(t("Could not type the transcript: Windows error {code}.",
+                       code=error or "unknown"))
+
+
+def unicode_events(text):
+    """Win32 keyboard packets for the UTF-16 code units in text."""
+    units = str(text).encode("utf-16-le")
+    events = []
+    for index in range(0, len(units), 2):
+        code = int.from_bytes(units[index:index + 2], "little")
+        for up in (False, True):
+            event = _Input(type=INPUT_KEYBOARD)
+            event.ki = _KeyboardInput(
+                wVk=0, wScan=code,
+                dwFlags=KEYEVENTF_UNICODE | (KEYEVENTF_KEYUP if up else 0),
+                time=0, dwExtraInfo=None,
+            )
+            events.append(event)
+    return events

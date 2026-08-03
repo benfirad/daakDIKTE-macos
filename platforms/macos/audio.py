@@ -1,17 +1,27 @@
-"""Raw PCM capture on the Linux desktop, through the sound server's own tools.
+"""Raw PCM capture with a live level meter.
 
-Dictation records one source through parec or pw-record. A meeting records two
-of them at once, the microphone and what comes out of the speakers, and for
-that it goes through ffmpeg instead: one process reading both devices and
-merging them into the two channels of a single stream, which is the only way
-the two stay aligned with each other over an hour.
+Dictation records one source. A meeting records two of them at once, the
+microphone and what comes out of the speakers, and for that it goes through
+ffmpeg: one process reading both devices and merging them into the two channels
+of a single stream, which is the only way the two stay aligned with each other
+over an hour.
+
+Which programs do the capturing is a property of the machine, not of the code
+above: PulseAudio or PipeWire on Linux, AVFoundation through ffmpeg on macOS.
+They are gathered into one group each near the bottom of this file, and a
+chooser picks between them.
 """
 
+import array
+import collections
 import json
+import math
 import os
+import re
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import threading
 import wave
@@ -19,18 +29,14 @@ import wave
 from PyQt6.QtCore import QObject, pyqtSignal
 
 from i18n import t
-from platforms.common.pcm import (
-    CHUNK_BYTES,
-    CHUNK_FRAMES,
-    CHUNK_LATENCY_MS,
-    CHANNELS,
-    MIN_FRAMES,
-    RATE,
-    SAMPLE_WIDTH,
-    chunk_levels,
-    stereo_levels,
-    write_wav,
-)
+
+RATE = 16000
+CHANNELS = 1
+SAMPLE_WIDTH = 2  # s16
+CHUNK_FRAMES = 1024
+CHUNK_BYTES = CHUNK_FRAMES * SAMPLE_WIDTH * CHANNELS
+CHUNK_LATENCY_MS = round(CHUNK_FRAMES / RATE * 1000)
+MIN_FRAMES = int(RATE * 0.25)
 
 
 class Recorder(QObject):
@@ -59,9 +65,7 @@ class Recorder(QObject):
             return
         cmd = recording_command(target)
         if not cmd:
-            self.failed.emit(t(
-                "No audio recorder found. Install pulseaudio-utils or pipewire-audio."
-            ))
+            self.failed.emit(t(sound().missing))
             return
 
         try:
@@ -167,7 +171,18 @@ class Recorder(QObject):
 
 
 def read_exactly(stream, size):
-    """Read one complete PCM block, or the final partial block at EOF."""
+    """`size` bytes from an unbuffered pipe, or what is left of it at the end.
+
+    `read(n)` hands over what has arrived rather than what was asked for, and
+    how much that is belongs to whoever is on the other end: parec, told the
+    latency to keep, fills a chunk at a time, while a recorder handing its
+    output to a pipe unasked may give over a fraction of one. Both the level
+    meter and the silence check are measured in chunks of one known length —
+    vad.analyse() is given the seconds a chunk lasts and multiplies — so a
+    stream that arrives in pieces is put back together here rather than
+    counted as if each piece were a chunk of its own, which would say a
+    two-second recording held fifteen seconds of speech.
+    """
     parts, remaining = [], size
     while remaining > 0:
         piece = stream.read(remaining)
@@ -178,48 +193,39 @@ def read_exactly(stream, size):
     return b"".join(parts)
 
 
-def recording_command(target=""):
-    """Return a raw-s16 capture command for the sound server on this desktop.
+def write_wav(pcm, rate=RATE, channels=CHANNELS, width=SAMPLE_WIDTH):
+    fd, path = tempfile.mkstemp(prefix="dikte-", suffix=".wav")
+    with open(fd, "wb") as raw, wave.open(raw, "wb") as wav:
+        wav.setnchannels(channels)
+        wav.setsampwidth(width)
+        wav.setframerate(rate)
+        wav.writeframes(pcm)
+    return path
 
-    parec works with both PulseAudio and PipeWire's PulseAudio compatibility
-    service, and its source names are the same ones shown by list_sources().
-    Keep pw-record as the fallback for minimal native-PipeWire installations.
-    """
-    if shutil.which("parec"):
-        cmd = [
-            "parec", "--record", "--raw", f"--rate={RATE}",
-            f"--channels={CHANNELS}", "--format=s16le",
-            # Left alone, parec holds about two seconds before handing anything
-            # over, and then hands over all of it at once: the level meter sits
-            # still and jumps, and the tail of a recording can be lost on the
-            # way out. A chunk of the meter is the unit the rest of this file
-            # is measured in, so ask for that.
-            f"--latency-msec={CHUNK_LATENCY_MS}",
-        ]
-        if target:
-            cmd.append(f"--device={target}")
-        return cmd
-    if shutil.which("pw-record"):
-        cmd = [
-            "pw-record", *_pw_record_raw_option(), f"--rate={RATE}",
-            f"--channels={CHANNELS}", "--format=s16",
-        ]
-        if target:
-            cmd.append(f"--target={target}")
-        cmd.append("-")
-        return cmd
-    return []
+
+def recording_command(target=""):
+    """A raw-s16 capture command for the sound system on this machine."""
+    return sound().record(target)
+
+def meeting_command(mic_target, system_target):
+    """One ffmpeg reading both devices and merging them into two channels."""
+    return sound().meeting(mic_target, system_target)
 
 
 def _pw_record_raw_option():
-    """Use --raw only on pw-record releases that provide it."""
+    """Use --raw only on pw-record releases that provide it.
+
+    PipeWire 1.0, including Ubuntu 24.04's build, writes raw PCM to stdout but
+    rejects the newer --raw option. A rejected option ends the recorder before
+    it receives sound, so ask the installed binary which form it understands.
+    """
     try:
         result = subprocess.run(
             ["pw-record", "--help"], capture_output=True, text=True, timeout=2
         )
         help_text = (result.stdout or "") + (result.stderr or "")
     except (subprocess.SubprocessError, OSError):
-        return ["--raw"]
+        return ["--raw"]  # preserve the existing command when probing itself fails
     if not help_text.strip():
         return ["--raw"]
     return ["--raw"] if "--raw" in help_text else []
@@ -269,18 +275,7 @@ class MeetingRecorder(QObject):
                                "Pick one in Settings → Meeting."))
             return
 
-        merge = (
-            "[0:a]aresample={rate}:async=1,aformat=sample_fmts=s16:channel_layouts=mono[m];"
-            "[1:a]aresample={rate}:async=1,aformat=sample_fmts=s16:channel_layouts=mono[s];"
-            "[m][s]amerge=inputs=2[out]"
-        ).format(rate=RATE)
-        cmd = [
-            "ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error",
-            "-f", "pulse", "-thread_queue_size", "4096", "-i", mic_target or "default",
-            "-f", "pulse", "-thread_queue_size", "4096", "-i", system_target,
-            "-filter_complex", merge, "-map", "[out]",
-            "-f", "s16le", "-ar", str(RATE), "-",
-        ]
+        cmd = meeting_command(mic_target, system_target)
 
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -317,6 +312,8 @@ class MeetingRecorder(QObject):
         block = CHUNK_FRAMES * SAMPLE_WIDTH * 2
         try:
             while True:
+                # Whole frames, or the stereo split below would read the two
+                # channels the wrong way round for the rest of the meeting.
                 chunk = read_exactly(stdout, block)
                 if not chunk:
                     break
@@ -428,10 +425,90 @@ class MeetingRecorder(QObject):
             self._log = None
 
 
-# --- the devices ----------------------------------------------------------
+def chunk_levels(chunk):
+    """(peak, rms) in 0..1. Peak drives the waveform, RMS drives the silence check."""
+    samples = array.array("h")
+    usable = len(chunk) - (len(chunk) % 2)
+    if usable <= 0:
+        return 0.0, 0.0
+    samples.frombytes(chunk[:usable])
+    peak = max(abs(min(samples)), abs(max(samples))) / 32768.0
+    rms = math.sqrt(sum(s * s for s in samples) / len(samples)) / 32768.0
+    return min(1.0, peak), min(1.0, rms)
 
 
-def _sources():
+def stereo_levels(chunk):
+    """(left peak, right peak) in 0..1 from interleaved stereo s16."""
+    samples = array.array("h")
+    usable = len(chunk) - (len(chunk) % 4)
+    if usable <= 0:
+        return 0.0, 0.0
+    samples.frombytes(chunk[:usable])
+    left, right = samples[0::2], samples[1::2]
+    return _peak(left), _peak(right)
+
+
+def _peak(samples):
+    if not samples:
+        return 0.0
+    return min(1.0, max(abs(min(samples)), abs(max(samples))) / 32768.0)
+
+
+# --- the sound system, one group per machine -------------------------------
+
+# Both meeting commands merge the same way: each input down to mono at our own
+# rate, then the two of them into the left and right of one stream.
+MERGE_FILTER = (
+    f"[0:a]aresample={RATE}:async=1,aformat=sample_fmts=s16:channel_layouts=mono[m];"
+    f"[1:a]aresample={RATE}:async=1,aformat=sample_fmts=s16:channel_layouts=mono[s];"
+    "[m][s]amerge=inputs=2[out]"
+)
+
+
+def _pulse_record(target):
+    """parec, or pw-record where PulseAudio's tools were left out.
+
+    parec works with both PulseAudio and PipeWire's PulseAudio compatibility
+    service, and its source names are the same ones shown by list_sources().
+    Keep pw-record as the fallback for minimal native-PipeWire installations.
+    """
+    if shutil.which("parec"):
+        cmd = [
+            "parec", "--record", "--raw", f"--rate={RATE}",
+            f"--channels={CHANNELS}", "--format=s16le",
+            # Left alone, parec holds about two seconds before handing anything
+            # over, and then hands over all of it at once: the level meter sits
+            # still and jumps, and the tail of a recording can be lost on the
+            # way out. A chunk of the meter is the unit the rest of this file
+            # is measured in, so ask for that.
+            f"--latency-msec={CHUNK_LATENCY_MS}",
+        ]
+        if target:
+            cmd.append(f"--device={target}")
+        return cmd
+    if shutil.which("pw-record"):
+        cmd = [
+            "pw-record", *_pw_record_raw_option(), f"--rate={RATE}",
+            f"--channels={CHANNELS}", "--format=s16",
+        ]
+        if target:
+            cmd.append(f"--target={target}")
+        cmd.append("-")
+        return cmd
+    return []
+
+
+def _pulse_meeting(mic_target, system_target):
+    return [
+        "ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error",
+        "-f", "pulse", "-thread_queue_size", "4096", "-i", mic_target or "default",
+        "-f", "pulse", "-thread_queue_size", "4096", "-i", system_target,
+        "-filter_complex", MERGE_FILTER, "-map", "[out]",
+        "-f", "s16le", "-ar", str(RATE), "-",
+    ]
+
+
+def _pactl_sources():
     if not shutil.which("pactl"):
         return []
     try:
@@ -444,30 +521,23 @@ def _sources():
         return []
 
 
-def list_sources():
-    """[(name, description)] for every real input source."""
+def _pulse_inputs():
     return [
         (src.get("name", ""), src.get("description") or src.get("name", ""))
-        for src in _sources()
+        for src in _pactl_sources()
         if not src.get("name", "").endswith(".monitor")
     ]
 
 
-def list_monitors():
-    """[(name, description)] for the monitor of every output.
-
-    Recording a monitor is recording whatever is being played, which in a
-    meeting is the other participants and nothing of your own microphone.
-    """
+def _pulse_outputs():
     return [
         (src.get("name", ""), src.get("description") or src.get("name", ""))
-        for src in _sources()
+        for src in _pactl_sources()
         if src.get("name", "").endswith(".monitor")
     ]
 
 
-def default_monitor():
-    """The monitor of the output sound is currently going to, or ''."""
+def _pulse_default_output():
     if not shutil.which("pactl"):
         return ""
     try:
@@ -480,5 +550,131 @@ def default_monitor():
     if not sink:
         return ""
     monitor = f"{sink}.monitor"
-    names = {name for name, _ in list_monitors()}
+    names = {name for name, _ in _pulse_outputs()}
     return monitor if not names or monitor in names else ""
+
+
+# macOS hands out no monitor of its own: what the speakers are playing is not
+# an input, and the only way to record it is a driver that pretends to be one.
+# These are the three people install.
+LOOPBACK_DEVICES = ("blackhole", "loopback", "soundflower")
+
+
+def _avfoundation_record(target):
+    if not shutil.which("ffmpeg"):
+        return []
+    return [
+        "ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error",
+        # AVFoundation names an input "video:audio", so the empty half in front
+        # of the colon is what says this recording has no picture in it.
+        "-f", "avfoundation", "-i", f":{target or 'default'}",
+        "-ac", str(CHANNELS), "-ar", str(RATE), "-f", "s16le", "-",
+    ]
+
+
+def _avfoundation_meeting(mic_target, system_target):
+    return [
+        "ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error",
+        "-thread_queue_size", "4096",
+        "-f", "avfoundation", "-i", f":{mic_target or 'default'}",
+        "-thread_queue_size", "4096",
+        "-f", "avfoundation", "-i", f":{system_target}",
+        "-filter_complex", MERGE_FILTER, "-map", "[out]",
+        "-f", "s16le", "-ar", str(RATE), "-",
+    ]
+
+
+def _avfoundation_inputs():
+    """[(name, name)] for every capture device AVFoundation offers.
+
+    ffmpeg accepts either the index or the device name. Names survive a device
+    being plugged in ahead of the chosen microphone; numeric indexes do not.
+    """
+    if not shutil.which("ffmpeg"):
+        return []
+    try:
+        # Listing devices is not a thing ffmpeg can do without an input, so it
+        # is asked for one it cannot open: the list comes out on stderr and the
+        # command then fails, which is the documented way of doing this.
+        result = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-f", "avfoundation",
+             "-list_devices", "true", "-i", ""],
+            capture_output=True, text=True, timeout=8, check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return []
+
+    devices, listing = [], False
+    for line in result.stderr.splitlines():
+        if "AVFoundation audio devices:" in line:
+            listing = True
+            continue
+        if not listing:
+            continue
+        match = re.search(r"\[(\d+)\]\s+(.+)$", line)
+        if match:
+            name = match.group(2).strip()
+            devices.append((name, name))
+    return devices
+
+
+def _avfoundation_default_output():
+    for name, description in _avfoundation_inputs():
+        if any(word in description.lower() for word in LOOPBACK_DEVICES):
+            return name
+    return ""
+
+
+Sound = collections.namedtuple(
+    "Sound",
+    # How to capture one source and two at once, the two device lists, which
+    # device a meeting records the far side from, and what to say when the
+    # programs for any of it are not installed.
+    "record meeting inputs outputs default_output missing",
+)
+
+PULSE = Sound(
+    record=_pulse_record,
+    meeting=_pulse_meeting,
+    inputs=_pulse_inputs,
+    outputs=_pulse_outputs,
+    default_output=_pulse_default_output,
+    missing="No audio recorder found. Install pulseaudio-utils or pipewire-audio.",
+)
+
+COREAUDIO = Sound(
+    record=_avfoundation_record,
+    meeting=_avfoundation_meeting,
+    inputs=_avfoundation_inputs,
+    # Every macOS capture device is offered as the far side of a meeting, the
+    # loopback driver among them: there is no way to tell them apart, and an
+    # empty list would leave nothing to pick.
+    outputs=_avfoundation_inputs,
+    default_output=_avfoundation_default_output,
+    missing="ffmpeg not found. Install it with: brew install ffmpeg",
+)
+
+
+def sound():
+    """The programs a macOS adapter records through."""
+    return COREAUDIO
+
+
+def list_sources():
+    """[(name, description)] for every real input source."""
+    return sound().inputs()
+
+
+def list_monitors():
+    """[(name, description)] for whatever can be recorded as the other side.
+
+    On Linux that is the monitor of an output, and recording it is recording
+    whatever is being played: in a meeting the other participants, and nothing
+    of your own microphone.
+    """
+    return sound().outputs()
+
+
+def default_monitor():
+    """The device the far side of a meeting comes from, or ''."""
+    return sound().default_output()

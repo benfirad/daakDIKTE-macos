@@ -23,7 +23,7 @@ The contract is the same either way:
 import shutil  # noqa: F401
 import threading  # noqa: F401
 
-from platforms import IS_WINDOWS, adapter
+from platforms import IS_MACOS, IS_WINDOWS, adapter
 from platforms.common.shortcuts import (  # noqa: F401
     ASK_DESKTOP_ID,
     CANCEL_DESKTOP_ID,
@@ -51,7 +51,7 @@ Listener = _impl.Listener
 # asks for a global shortcut, so the listener runs whenever Dikte does. On Linux
 # it reads /dev/input behind the desktop's back, does not swallow the key, and
 # needs the user in the `input` group, so it stays off unless asked for.
-LISTENER_IS_PRIMARY = IS_WINDOWS
+LISTENER_IS_PRIMARY = IS_WINDOWS or IS_MACOS
 
 # Linux keeps a few of its own on show: the tests pin the KDE and GNOME halves
 # separately, and the settings window names the desktop it wrote a file for.

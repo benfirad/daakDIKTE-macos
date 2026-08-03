@@ -4,9 +4,9 @@
 çevrilir, bir model transkripti temizler (ıı'lar, tekrarlar, eksik noktalama),
 sonuç panoya kopyalanır ve o an yazdığın pencereye yapıştırılır.
 
-Linux'ta ve Windows'ta çalışır. Linux tarafı KDE Plasma 6 / Wayland için
-yazıldı ve sistem paketleri dışında bağımlılığı yok: sadece Python standart
-kütüphanesi ve PyQt6. Windows tarafı bir kurulum dosyası; hiçbir şey gerekmiyor.
+Linux, macOS ve Windows üzerinde yerel olarak çalışır. Linux PipeWire/PulseAudio,
+macOS CoreAudio, NSPasteboard ve Carbon, Windows ise WASAPI ve Win32 API'lerini
+kullanır; dikte, temizleme, toplantı ve ajan hattı üçünde ortaktır.
 
 *[English README](README.md)*
 
@@ -32,6 +32,39 @@ systemctl --user enable --now ydotool     # otomatik yapıştırma için
 dikte                        # ilk açılışta ayarlar penceresi gelir
 ```
 
+Fedora KDE'de paket adları farklı, `ydotool` da bir adım fazla istiyor:
+
+```sh
+sudo dnf install pipewire-utils wl-clipboard ydotool ffmpeg-free python3-pyqt6
+```
+
+Fedora `ydotool`'u kullanıcı servisi değil sistem servisi olarak kuruyor;
+`ydotoold` de root'a ait bir sokete bağlanıyor, oturumun oraya yazamadığı için
+servis çalışırken bile otomatik yapıştırma tutmuyor. Soketi `ydotool`
+istemcisinin zaten baktığı yola al ve sahipliğini devret:
+
+```sh
+sudo mkdir -p /etc/systemd/system/ydotool.service.d
+printf '[Service]\nExecStart=\nExecStart=/usr/bin/ydotoold --socket-path=%s/.ydotool_socket --socket-own=%s:%s\n' \
+  "$XDG_RUNTIME_DIR" "$(id -u)" "$(id -g)" \
+  | sudo tee /etc/systemd/system/ydotool.service.d/override.conf >/dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable --now ydotool
+```
+
+O çalışma dizini oturumuna ait olduğu için yeniden başlatmanın ardından servis
+sen giriş yapana kadar kendini yeniden deneyip ondan sonra oturuyor. Fedora'nın
+kendi depolarındaki `ffmpeg-free` yetiyor, RPM Fusion gerekmiyor: özgür yapının
+dışarıda bıraktığı şey H.264 ve HEVC video çözümü, Dikte ise video dosyasının
+yalnızca ses izini alıyor; onun AAC, MP3 ve Opus çözücüleri yapının içinde.
+
+Bu makinede koşan modeller için de eklenecek bir şey yok. O sürümler Ubuntu'da
+derleniyor ve burada olduğu gibi çalışıyor; `libvulkan.so.1`'i KWin'in kendisi
+bağladığı için Plasma masaüstünde llama.cpp'nin Vulkan yapısıyla gelip
+gelmeyeceğini belirleyen yükleyici zaten kurulu, Mesa sürücüleri de onunla
+birlikte geliyor. whisper.cpp ise Linux için hiç GPU yapısı yayımlamıyor,
+nerede çalışırsa çalışsın işlemcide çeviriyor.
+
 Ubuntu/GNOME X11 için kayıt PulseAudio üzerinden, pano ve yapıştırma ise X11
 araçlarıyla çalışır:
 
@@ -44,6 +77,31 @@ başlatmayı ve iki global kısayolu kurar; tuşları da iki argümanı. `./upda
 son sürümü çeker ve bunları senin seçtiğin tuşlarla yerine koyar;
 `./uninstall.sh` hepsini geri alır, `--purge` demedikçe ayarlarına ve
 diktelerine dokunmaz.
+
+### macOS
+
+Yerel kayıt aracını, konuşma sunucusunu ve Python çalışma ortamını Homebrew ile
+kurup aynı yükleyiciyi çalıştır:
+
+```sh
+brew install ffmpeg whisper-cpp python@3.13
+python3.13 -m pip install PyQt6
+./install.sh
+```
+
+Yükleyici `~/Applications/Dikte.app`, `dikte` komutu ve oturum açılışında
+çalışan bir LaunchAgent oluşturur; Dikte menü çubuğunda yaşar. Varsayılan
+kısayol `Ctrl+Option+Space`'tir, çünkü `Ctrl+Space` çoğu Mac'te giriş kaynağını
+değiştirir. İlk yapıştırmada **Sistem Ayarları → Gizlilik ve Güvenlik →
+Erişilebilirlik** altında Dikte'ye izin ver. Mikrofon iznini ilk kayıt sırasında
+macOS ister.
+
+Mikrofon listesi değişken aygıt numaraları yerine kararlı AVFoundation adlarını
+kaydeder. Toplantıda karşı tarafın sesini almak için BlackHole, Loopback veya
+Soundflower gibi bir loopback aygıtı gerekir; normal dikte için gerekmez.
+whisper.cpp, yayınlarında çalıştırılabilir macOS sunucusu bulunmadığı için
+Homebrew'dan gelir; Dikte Metal destekli yerel llama.cpp yapısını kendi
+indirebilir.
 
 ### Windows
 

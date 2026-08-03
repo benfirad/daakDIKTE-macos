@@ -390,6 +390,19 @@ class KeyPresses(unittest.TestCase):
         self.assertIn(0x2D, win_clipboard.EXTENDED)
         self.assertIn(0x5B, win_clipboard.EXTENDED)
 
+    def test_unicode_typing_has_a_down_and_up_for_every_utf16_unit(self):
+        events = win_clipboard.unicode_events("A😀")
+        self.assertEqual(len(events), 6)  # A plus the emoji's surrogate pair
+        self.assertEqual([event.ki.wScan for event in events],
+                         [0x41, 0x41, 0xD83D, 0xD83D, 0xDE00, 0xDE00])
+        self.assertTrue(all(event.ki.dwFlags & win_clipboard.KEYEVENTF_UNICODE
+                            for event in events))
+        self.assertEqual(
+            [bool(event.ki.dwFlags & win_clipboard.KEYEVENTF_KEYUP)
+             for event in events],
+            [False, True, False, True, False, True],
+        )
+
 
 @windows_only
 class ClipboardSnapshot(unittest.TestCase):

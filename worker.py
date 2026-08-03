@@ -137,11 +137,19 @@ class Pipeline(QObject):
             if paste_override is not None:
                 wants_paste = paste_override
 
-            with _paste_lock:
-                previous = paste.read_clipboard() if conf["restore_clipboard"] else None
-                paste.copy(text)
+            typing = wants_paste and conf["type_instead_of_pasting"]
 
-                if wants_paste:
+            with _paste_lock:
+                previous = (paste.read_clipboard()
+                            if conf["restore_clipboard"] and wants_paste
+                            and not typing else None)
+                if typing:
+                    self.stage.emit(t("Typing…"))
+                    paste.type_out(text)
+                else:
+                    paste.copy(text)
+
+                if wants_paste and not typing:
                     self.stage.emit(t("Pasting…"))
                     paste.press(conf["paste_shortcut"])
                     if previous is not None:

@@ -151,6 +151,14 @@ class DesktopContract:
             linux_clipboard.press(shortcut)
         return run.call_args.args[0]
 
+    def typing(self, text, result=None):
+        with only_these_tools(self.here.keyboard), \
+                mock.patch.object(linux_clipboard.time, "sleep", lambda seconds: None), \
+                mock.patch.object(subprocess, "run",
+                                  return_value=result or FakeCompleted()) as run:
+            linux_clipboard.type_out(text)
+        return run.call_args.args[0]
+
     def test_no_keyboard_tool_installed(self):
         with only_these_tools():
             self.assertFalse(linux_clipboard.paste_ready())
@@ -183,6 +191,11 @@ class DesktopContract:
         self.assertIn(self.here.keyboard, str(caught.exception))
         self.assertIn("no socket", str(caught.exception))
 
+    def test_text_is_typed_without_using_the_clipboard(self):
+        command = self.typing("günaydın")
+        self.assertEqual(command[0], self.here.keyboard)
+        self.assertEqual(command[-1], "günaydın")
+
 
 class Wayland(DesktopContract, DikteTest):
     env: ClassVar[dict] = {"XDG_SESSION_TYPE": "wayland",
@@ -208,6 +221,12 @@ class Wayland(DesktopContract, DikteTest):
         with self.assertRaises(linux_clipboard.PasteError) as caught:
             self.press("ctrl+v", FakeCompleted(returncode=1, stderr="no socket"))
         self.assertIn("ydotoold", str(caught.exception))
+
+    def test_typing_marks_the_end_of_ydotool_options(self):
+        self.assertEqual(
+            self.typing("-not-an-option"),
+            ["ydotool", "type", "--key-delay", "0", "--", "-not-an-option"],
+        )
 
 
 class X11(DesktopContract, DikteTest):

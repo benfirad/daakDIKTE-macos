@@ -52,10 +52,13 @@ class Chain(DikteTest):
                 mock.patch.object(paste, "copy") as copy, \
                 mock.patch.object(paste, "copy_bytes") as copy_bytes, \
                 mock.patch.object(paste, "press") as press, \
-                mock.patch.object(paste, "read_clipboard", return_value=clipboard), \
+                mock.patch.object(paste, "type_out") as type_out, \
+                mock.patch.object(paste, "read_clipboard",
+                                  return_value=clipboard) as read_clipboard, \
                 mock.patch.object(worker.time, "sleep", lambda seconds: None):
             calls = {"transcribe": tr, "cleanup": cleanup, "ask": ask_call,
-                     "copy": copy, "copy_bytes": copy_bytes, "press": press}
+                     "copy": copy, "copy_bytes": copy_bytes, "press": press,
+                     "type_out": type_out, "read_clipboard": read_clipboard}
             pipeline._work(self.wav, duration,
                            self.rms if rms is None else rms, ask, paste_override)
         return {"done": done, "failures": failures, "stages": stages,
@@ -86,6 +89,15 @@ class Chain(DikteTest):
         run = self.run_chain()
         run["copy"].assert_called_once()
         run["press"].assert_not_called()
+
+    def test_typing_mode_leaves_the_clipboard_alone(self):
+        self.conf["type_instead_of_pasting"] = True
+        self.conf["restore_clipboard"] = True
+        run = self.run_chain()
+        run["type_out"].assert_called_once_with("Book it for Thursday.")
+        run["copy"].assert_not_called()
+        run["press"].assert_not_called()
+        run["read_clipboard"].assert_not_called()
 
     def test_a_run_asked_for_from_a_terminal_pastes_nowhere(self):
         """The text comes back down the socket; the focused window is nobody's."""

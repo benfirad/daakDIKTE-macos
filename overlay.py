@@ -6,7 +6,8 @@ from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF
 from PyQt6.QtGui import QColor, QCursor, QFont, QPainter, QPainterPath, QPen, QFontMetrics
 from PyQt6.QtWidgets import QWidget, QApplication
 
-from platforms import IS_WINDOWS
+import macos
+from platforms import IS_MACOS, IS_WINDOWS
 
 BARS = 22
 HEIGHT = 56
@@ -66,7 +67,7 @@ class Overlay(QWidget):
         # sit in a screen corner and stay out of the taskbar. Windows already
         # does both for a tool window that never activates, and the hint there
         # is a request to a window manager that is not listening.
-        if not IS_WINDOWS:
+        if not IS_WINDOWS and not IS_MACOS:
             flags |= Qt.WindowType.X11BypassWindowManagerHint
         self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -88,6 +89,14 @@ class Overlay(QWidget):
         self._hide_timer = QTimer(self)
         self._hide_timer.setSingleShot(True)
         self._hide_timer.timeout.connect(self._conceal)
+
+    def prepare(self):
+        """Map the native window empty before the first real dictation."""
+        self._resize_to_content()
+        self._reposition()
+        self.show()
+        macos.keep_visible_without_focus(self)
+        self._conceal()
 
     # ---- public API --------------------------------------------------
 
@@ -177,6 +186,7 @@ class Overlay(QWidget):
         self._reposition()
         if not self.isVisible():
             self.show()
+            macos.keep_visible_without_focus(self)
         if self._concealed:
             self.raise_()
             self._concealed = False
